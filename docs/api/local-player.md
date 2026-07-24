@@ -137,7 +137,7 @@ const OWNER = {}; // stable identity for this module's request
 
 ctx.on("tick", () => {
   player.rotationScheduler.request(
-    new utils.Vector2(90, 0), // (yaw, pitch)
+    new utils.Vector2(0, 90), // (pitch, yaw)
     utils.SchedulerPriority.High,
     OWNER,
     50,

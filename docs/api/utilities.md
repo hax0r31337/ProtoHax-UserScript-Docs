@@ -25,7 +25,7 @@ useful pieces for a script:
 | Export | Description |
 | --- | --- |
 | `Vector3(x, y, z)` | Immutable 3D vector. Fields `x`, `y`, `z` are readonly. |
-| `Vector2(x, y)` | Immutable 2D vector (used for rotations). |
+| `Vector2(x, y)` | Immutable 2D vector. Rotations are `(pitch, yaw)` — pitch in `x`, yaw in `y`. |
 | `AABB(min, max)` | Axis-aligned bounding box from two `Vector3`s. |
 
 `IVector3` is the plain `{ x, y, z }` interface many APIs accept — you can pass a
@@ -33,9 +33,10 @@ bare object literal where an `IVector3` is expected.
 
 ### Math helpers
 
-Common ones: `clamp`, `lerp`, `degToRad`, `radToDeg`, `wrapDegrees`,
-`clampPitch`, `getRotationFromVector`, `getLookDirection`, `blockPositionKey` /
-`blockPositionFromKey`, `makeEntityAABB`, `computeStrafe`.
+Common ones: `clamp`, `lerp`, `wrapDegrees`, `clampPitch`,
+`getRotationFromVector`, `getLookDirection`, `blockPositionKey` /
+`blockPositionFromKey`, `makeEntityAABB`, `computeStrafe`. For angle
+conversion, multiply by the constants `DEG_TO_RAD` / `RAD_TO_DEG`.
 
 ### Scheduling
 

@@ -194,11 +194,15 @@ class DiamondOreTracker extends AbstractBlockLocationTracker<void> {
   }
 }
 
-defineModule({ name: "DiamondFinder", category: ModuleCategory.Utility }, () => (ctx) => {
-  const tracker = new DiamondOreTracker();
-  ctx.onEnable(() => tracker.bindToSession(ctx.session));
-  ctx.onDisable(() => tracker.unbindFromSession());
-});
+defineModule(
+  { name: "DiamondFinder", category: ModuleCategory.Utility },
+  {},
+  (ctx) => {
+    const tracker = new DiamondOreTracker();
+    ctx.onEnable(() => tracker.bindToSession(ctx.session));
+    ctx.onDisable(() => tracker.unbindFromSession());
+  },
+);
 ```
 
 > **Note — client-side only.** `setBlock` and tracked state are local to your

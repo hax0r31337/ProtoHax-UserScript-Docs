@@ -65,14 +65,18 @@ const blink: PacketQueueChecker = {
   },
 };
 
-defineModule({ name: "Blink", category: ModuleCategory.Movement }, () => (ctx) => {
-  ctx.onEnable(() => ctx.session.connection.addPacketQueueChecker(blink));
-  ctx.onDisable(() => {
-    ctx.session.connection.removePacketQueueChecker(blink);
-    // release everything we held, in FIFO order
-    ctx.session.connection.flushHeld(false);
-  });
-});
+defineModule(
+  { name: "Blink", category: ModuleCategory.Movement },
+  {},
+  (ctx) => {
+    ctx.onEnable(() => ctx.session.connection.addPacketQueueChecker(blink));
+    ctx.onDisable(() => {
+      ctx.session.connection.removePacketQueueChecker(blink);
+      // release everything we held, in FIFO order
+      ctx.session.connection.flushHeld(false);
+    });
+  },
+);
 ```
 
 ### `PacketQueueChecker`
