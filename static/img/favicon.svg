@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 40 40" fill="none">
+  <!--
+    ProtoHax UserScript favicon.
+    app.svg-style teal tile with the white ProtoHax "router" glyph and a white
+    </> code badge on the bottom-right corner (userscript). A knockout ring keeps
+    the badge distinct from the router. Matches the navbar logo.
+  -->
+  <defs>
+    <linearGradient id="favTile" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#009688"/>
+      <stop offset="1" stop-color="#00bcd4"/>
+    </linearGradient>
+    <mask id="favCut">
+      <rect width="40" height="40" fill="#fff"/>
+      <circle cx="27.5" cy="27.5" r="8.4" fill="#000"/>
+    </mask>
+  </defs>
+
+  <rect width="40" height="40" rx="9" fill="url(#favTile)"/>
+
+  <!-- White router glyph, with a knockout where the badge sits -->
+  <g mask="url(#favCut)">
+    <g transform="translate(6.5 5.5)" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="2" y="14" width="20" height="8" rx="2"/>
+      <path d="M15 10v4"/>
+      <path d="M17.84 7.17a4 4 0 0 0-5.66 0"/>
+      <path d="M20.66 4.34a8 8 0 0 0-11.31 0"/>
+    </g>
+    <circle cx="14.5" cy="24.5" r="0.95" fill="#fff"/>
+    <circle cx="18.9" cy="24.5" r="0.95" fill="#fff"/>
+  </g>
+
+  <!-- </> userscript badge -->
+  <circle cx="27.5" cy="27.5" r="7" fill="#fff"/>
+  <g stroke="#009688" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M25.5 24.4 22.85 27.5l2.65 3.1"/>
+    <path d="M29.5 24.4 32.15 27.5l-2.65 3.1"/>
+    <path d="M28.4 23.8 26.6 31.2"/>
+  </g>
+</svg>

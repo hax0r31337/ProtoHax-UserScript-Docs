@@ -1,0 +1,309 @@
+/**
+ * ProtoHax UserScript docs theme.
+ * Brand: teal #009688 -> cyan #00bcd4, Lexend wordmark (see assets/banner.svg).
+ *
+ * Rigid design: square corners, hard 1px rules, flat fills. Depth is expressed
+ * with borders and accent bars, never with radii, blur or drop shadows.
+ */
+
+:root {
+  /* Brand ramp, generated around Material teal 500 (#009688) */
+  --ifm-color-primary: #009688;
+  --ifm-color-primary-dark: #00877a;
+  --ifm-color-primary-darker: #008074;
+  --ifm-color-primary-darkest: #00695f;
+  --ifm-color-primary-light: #00a194;
+  --ifm-color-primary-lighter: #00a69a;
+  --ifm-color-primary-lightest: #00b6ac;
+
+  --ph-teal: #009688;
+  --ph-cyan: #00bcd4;
+  --ph-gradient: linear-gradient(90deg, var(--ph-teal) 0%, var(--ph-cyan) 100%);
+
+  /* Every surface tint and rule on the site derives from these two. */
+  --ph-line: rgba(0, 150, 136, 0.28);
+  --ph-tint: rgba(0, 150, 136, 0.07);
+
+  --ifm-font-family-base: 'Lexend', system-ui, -apple-system, 'Segoe UI', Roboto,
+    sans-serif;
+  --ifm-heading-font-family: 'Lexend', system-ui, sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', ui-monospace, SFMono-Regular,
+    'Cascadia Code', Menlo, Consolas, monospace;
+
+  --ifm-code-font-size: 90%;
+  --ifm-heading-font-weight: 600;
+
+  /* Square everything infima would round, at the source. */
+  --ifm-global-radius: 0;
+  --ifm-code-border-radius: 0;
+  --ifm-button-border-radius: 0;
+  --ifm-card-border-radius: 0;
+  --ifm-alert-border-radius: 0;
+  --ifm-pagination-nav-border-radius: 0;
+
+  /* Flat: no soft shadows anywhere. */
+  --ifm-global-shadow-lw: none;
+  --ifm-global-shadow-md: 0 0 0 1px var(--ph-line);
+  --ifm-global-shadow-tl: 0 0 0 1px var(--ph-line);
+  --ifm-navbar-shadow: none;
+
+  --ifm-toc-border-color: var(--ph-line);
+  --docusaurus-highlighted-code-line-bg: rgba(0, 150, 136, 0.12);
+}
+
+[data-theme='dark'] {
+  /* Lifted toward cyan so links stay readable on dark surfaces */
+  --ifm-color-primary: #26c6da;
+  --ifm-color-primary-dark: #22b2c4;
+  --ifm-color-primary-darker: #20a8b9;
+  --ifm-color-primary-darkest: #1b8b99;
+  --ifm-color-primary-light: #3cccde;
+  --ifm-color-primary-lighter: #47cfe0;
+  --ifm-color-primary-lightest: #67d7e5;
+
+  --ph-line: rgba(38, 198, 218, 0.26);
+  --ph-tint: rgba(38, 198, 218, 0.08);
+
+  --ifm-background-color: #14181a;
+  --ifm-background-surface-color: #1b2124;
+  --ifm-navbar-background-color: #14181a;
+  --docusaurus-highlighted-code-line-bg: rgba(38, 198, 218, 0.15);
+}
+
+/**
+ * Nothing on this site is rounded — including components shipped by Docusaurus
+ * and plugins, which hardcode their own radii.
+ */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+/* ---------- Navbar ---------- */
+
+.navbar {
+  border-bottom: 1px solid var(--ph-line);
+}
+
+/* Hairline of brand gradient under the navbar */
+.navbar::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 -1px;
+  height: 2px;
+  background: var(--ph-gradient);
+}
+
+.navbar__title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.navbar__logo {
+  height: 1.9rem;
+}
+
+.navbar__link,
+.navbar__brand {
+  letter-spacing: -0.01em;
+}
+
+.navbar__link--active {
+  box-shadow: inset 0 -2px 0 var(--ifm-color-primary);
+}
+
+.dropdown__menu {
+  border: 1px solid var(--ph-line);
+}
+
+/* ---------- Typography ---------- */
+
+.markdown h1,
+.markdown h2 {
+  letter-spacing: -0.02em;
+}
+
+.markdown h2 {
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--ph-line);
+}
+
+.markdown > h2:not(:first-child),
+.markdown > h3:not(:first-child) {
+  margin-top: 2.2rem;
+}
+
+.markdown blockquote {
+  border-left: 3px solid var(--ifm-color-primary);
+  background: var(--ph-tint);
+}
+
+/* ---------- Code ---------- */
+
+code {
+  border: 1px solid var(--ph-line);
+  background-color: var(--ph-tint);
+}
+
+a code {
+  color: inherit;
+}
+
+.theme-code-block,
+div[class^='codeBlockContainer'] {
+  border: 1px solid var(--ph-line);
+  box-shadow: none;
+}
+
+/* Filename / title bar sits flush against the block it labels. */
+div[class^='codeBlockTitle'] {
+  border-bottom: 1px solid var(--ph-line) !important;
+  background: var(--ph-tint);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* ---------- Sidebar ---------- */
+
+.theme-doc-sidebar-container {
+  border-right: 1px solid var(--ph-line) !important;
+}
+
+.menu {
+  padding: 0.75rem !important;
+  font-size: 0.92rem;
+}
+
+.menu__link {
+  border-left: 3px solid transparent;
+  transition: background-color 100ms linear, border-color 100ms linear;
+}
+
+.menu__link:hover {
+  background: var(--ph-tint);
+}
+
+/* Active page: flat tint plus a hard accent bar, no pill. */
+.menu__link--active:not(.menu__link--sublist) {
+  background: var(--ph-tint);
+  border-left-color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+.menu__list-item-collapsible > .menu__link {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Category headings read as section labels, not links. */
+.menu__list .menu__list {
+  border-left: 1px solid var(--ph-line);
+  margin-left: 0.6rem;
+  padding-left: 0.4rem;
+}
+
+/* ---------- Table of contents ---------- */
+
+.table-of-contents {
+  border-left: 1px solid var(--ph-line);
+}
+
+.table-of-contents__link--active,
+.table-of-contents__link--active code {
+  font-weight: 600;
+}
+
+/* ---------- Pagination ---------- */
+
+.pagination-nav__link {
+  border: 1px solid var(--ph-line);
+  transition: background-color 100ms linear, border-color 100ms linear;
+}
+
+.pagination-nav__link:hover {
+  border-color: var(--ifm-color-primary);
+  background: var(--ph-tint);
+}
+
+.pagination-nav__sublabel {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+
+/* ---------- Admonitions & tables ---------- */
+
+.theme-admonition {
+  border: 1px solid var(--ph-line);
+  border-left-width: 4px;
+}
+
+.markdown table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--ph-line);
+}
+
+.markdown table thead tr {
+  background: var(--ph-tint);
+  border-bottom: 2px solid var(--ph-line);
+}
+
+/* Full grid — every cell is boxed. */
+.markdown table th,
+.markdown table td {
+  border: 1px solid var(--ph-line);
+}
+
+.markdown table th {
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+}
+
+/* ---------- Footer ---------- */
+
+.footer--dark {
+  --ifm-footer-background-color: #0f1517;
+  border-top: 2px solid transparent;
+  border-image: var(--ph-gradient) 1;
+}
+
+.footer__title {
+  color: var(--ph-cyan);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ---------- Misc ---------- */
+
+::selection {
+  background: rgba(0, 188, 212, 0.28);
+}
+
+.breadcrumbs__item--active .breadcrumbs__link {
+  background: var(--ph-tint);
+}
+
+/* Brand-tinted scrollbar (WebKit) */
+@supports selector(::-webkit-scrollbar) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 150, 136, 0.35);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 150, 136, 0.6);
+    background-clip: content-box;
+  }
+}

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+  <!--
+    ProtoHax UserScript logo.
+    The full ProtoHax "router" glyph (the brand), with a </> code badge overlaid
+    on the bottom-right corner to signify "userscript". A transparent knockout
+    ring separates the badge from the router on any background (light/dark).
+    Lucide-consistent: 2px round strokes.
+  -->
+  <defs>
+    <linearGradient id="phRouter" x1="2" y1="12" x2="22" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#009688"/>
+      <stop offset="1" stop-color="#00bcd4"/>
+    </linearGradient>
+    <linearGradient id="phBadge" x1="12.6" y1="12.6" x2="23" y2="23" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00bcd4"/>
+      <stop offset="1" stop-color="#009688"/>
+    </linearGradient>
+    <!-- Punch a transparent gap out of the router where the badge sits.
+         Rect is oversized so it never clips the router itself. -->
+    <mask id="phCut">
+      <rect x="-4" y="-4" width="32" height="32" fill="#fff"/>
+      <circle cx="17.8" cy="17.8" r="6.2" fill="#000"/>
+    </mask>
+  </defs>
+
+  <!-- ProtoHax router glyph, scaled to sit top-left and clear the badge corner.
+       Fully inside the 0-24 viewBox (top arc peak lands at y~1.8, not clipped). -->
+  <g mask="url(#phCut)">
+    <g transform="translate(0.18 0.18) scale(0.82)"
+       stroke="url(#phRouter)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="2" y="14" width="20" height="8" rx="2"/>
+      <path d="M15 10v4"/>
+      <path d="M17.84 7.17a4 4 0 0 0-5.66 0"/>
+      <path d="M20.66 4.34a8 8 0 0 0-11.31 0"/>
+      <circle cx="6" cy="18" r="0.85" fill="url(#phRouter)" stroke="none"/>
+      <circle cx="10" cy="18" r="0.85" fill="url(#phRouter)" stroke="none"/>
+    </g>
+  </g>
+
+  <!-- </> userscript badge -->
+  <circle cx="17.8" cy="17.8" r="5.2" fill="url(#phBadge)"/>
+  <g stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M16.3 15.5 14.4 17.8l1.9 2.3"/>
+    <path d="M19.3 15.5 21.2 17.8l-1.9 2.3"/>
+    <path d="M18.5 15 17.1 20.6"/>
+  </g>
+</svg>
