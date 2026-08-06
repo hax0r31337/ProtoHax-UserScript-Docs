@@ -43,6 +43,10 @@ the log — it is local-only and never sent to the server:
 ctx.session.sendChatMessage(`target: ${target?.username ?? "none"}`);
 ```
 
+Do **not** log from a [`movement_tick`](/api/movement) handler on every tick:
+that handler blocks the game thread, and logging 20 lines a second is enough to
+be felt. Log from `tick` instead, or gate it behind a counter.
+
 ## Reminders
 
 - Scripts are read at **startup** — a rebuild needs a client restart (or

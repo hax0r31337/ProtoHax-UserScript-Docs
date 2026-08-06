@@ -83,7 +83,8 @@ A handful of types **are** exported by name because you name them directly:
   `GameSession`, `AbstractEntity`, `EntityPlayer`, `EntityNetworkPlayer`,
   `EntityCreature`, `EntityItem`, `EntityLocalPlayer`, `BlockState`, `Chunk`,
   `SubChunk`, `AbstractBlockLocationTracker`, `Option`, `ModuleCategory`,
-  `ModuleMode`, `ModuleTriggerMode`, plus `defineModule`, `mode`,
+  `ModuleMode`, `ModuleTriggerMode`, `SprintIntent`, `FlushAction`, plus
+  `defineModule`, `mode`,
   `moduleManager`, `utils`, `nbt`, and the
   [combat helpers](/api/combat-helpers) (`targets`, `TargetConfigurable`,
   `TargetPriority`, `ClickSchedulerConfigurable`, `ClickTechnique`, the
@@ -91,7 +92,8 @@ A handful of types **are** exported by name because you name them directly:
   `ROTATION_KEEP`).
 - Type-only exports: `GameSessionEvents`, `FullPacketEvents`, `ModuleContext`,
   `ModuleMeta`, `Color`, `NumberOptionProps`, `NumberRange`, `Configurable`,
-  `BlockEntry`, the [option schema](/guides/options) types (`OptionsSchema`,
+  `BlockEntry`, [`MovementState`](/api/movement), `Connection`,
+  `PacketQueueChecker`, `HeldPacket`, the [option schema](/guides/options) types (`OptionsSchema`,
   `SchemaNode` and the per-kind node interfaces, `ModeSchema`) and their handle
   types (`OptionHandles`, `SchemaNodeHandle`, `ModesHandle`, `ModeHandle`,
   `GroupHandle`, `RotationHandle`), the combat helper types (`ModuleTargets`,

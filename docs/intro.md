@@ -35,7 +35,7 @@ This package is **types-only**. It ships a single `index.d.ts` and no runtime
 code. That is deliberate:
 
 - The **types** describe the authoring API and the host's own game model, so
-  your editor autocompletes `ctx.session.entityState.localPlayer.jump()` and
+  your editor autocompletes `ctx.session.entityState.localPlayer.inventory` and
   type-checks every packet payload.
 - The **values** you import from it — `defineModule`, `moduleManager`, the entity
   classes, `AbstractBlockLocationTracker`, `nbt`, `utils` — are resolved at
@@ -103,8 +103,10 @@ defineModule(
     speed: { type: "number", def: 1, min: 0, max: 5, step: 0.1 },
   },
   (ctx) => {
-    ctx.on("tick", () => {
-      ctx.session.entityState.localPlayer.strafe(ctx.options.speed.value, 1);
+    // "movement_tick" is the game's own tick, fired from native before it
+    // moves — position and motion written on the state land in that tick.
+    ctx.on("movement_tick", (state) => {
+      state.strafe(ctx.options.speed.value, 1);
     });
   },
 );
@@ -121,4 +123,5 @@ subscribes to events. The next pages walk through each layer.
 - **[Modules](/guides/modules)** — metadata, categories, and toggling.
 - **[Options](/guides/options)** — sliders, toggles, enums, colors.
 - **[Events & Packets](/guides/events-and-packets)** — subscribing to the session.
+- **[Movement](/api/movement)** — `movement_tick`, `MovementState`, and sprint control.
 - **[API Reference](/api/session)** — the session, entities, world, inventory, and packets.

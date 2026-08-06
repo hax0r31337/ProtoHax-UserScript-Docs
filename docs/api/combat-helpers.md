@@ -1,7 +1,7 @@
 ---
 id: combat-helpers
 title: Combat Helpers
-sidebar_position: 8
+sidebar_position: 9
 ---
 
 # Combat Helpers

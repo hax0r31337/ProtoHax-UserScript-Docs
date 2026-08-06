@@ -1,7 +1,7 @@
 ---
 id: inventory
 title: Items & Inventory
-sidebar_position: 5
+sidebar_position: 6
 ---
 
 # Items & Inventory

@@ -1,7 +1,7 @@
 ---
 id: utilities
 title: Utilities & NBT
-sidebar_position: 8
+sidebar_position: 10
 ---
 
 # Utilities & NBT
@@ -74,6 +74,8 @@ combat(ctx.session).ticks++;
 | `xxh32String`, `fnv1aString` | String hashers. |
 | `nanoid`, `generateRandomString` | Random id generation. |
 | `ReadStream`, `WriteStream` | Binary IO streams. |
+| `pushUnique(list, value, equals?)` | Append to an array unless an equal element is already present; returns whether the list changed. |
+| `removeFrom(list, value, equals?)` | Remove the first equal element from an array; returns whether the list changed. |
 
 > **Tip — explore with autocomplete.** Because the whole utility tree is
 > published, the fastest way to see what's available is to type `utils.` in your

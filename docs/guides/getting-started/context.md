@@ -31,13 +31,11 @@ state, sending a one-shot packet, etc.).
 
 ```ts
 (ctx) => {
-  const player = ctx.session.entityState.localPlayer;
-
   ctx.onEnable(() => console.log("turned on"));
   ctx.onDisable(() => console.log("turned off"));
 
-  // Fires every tick, but only while enabled.
-  ctx.on("tick", () => player.jump());
+  // Fires every movement tick, but only while enabled.
+  ctx.on("movement_tick", (state) => state.jump());
 };
 ```
 

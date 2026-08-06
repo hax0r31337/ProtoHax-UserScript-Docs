@@ -21,7 +21,7 @@ defineModule(
     speed: { type: "number", def: 1, min: 0, max: 5, step: 0.1 },
   },
   (ctx) => {
-    ctx.on("tick", () => ctx.session.entityState.localPlayer.strafe(ctx.options.speed.value, 1));
+    ctx.on("movement_tick", (state) => state.strafe(ctx.options.speed.value, 1));
   },
 );
 ```

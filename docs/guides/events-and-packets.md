@@ -36,6 +36,7 @@ The full `GameSessionEvents` map:
 | `dimension_change` | `()` | The dimension changed. |
 | `tick` | `()` | Each game tick (before processing). |
 | `post_tick` | `()` | Each game tick (after processing). |
+| `movement_tick` | `(state: MovementState)` | The game's own movement tick, before the client travels. **Performance-critical** — see below. |
 | `entity_spawn` | `(entity: AbstractEntity)` | An entity appeared. |
 | `entity_despawn` | `(entity: AbstractEntity)` | An entity was removed. |
 | `chunk_load` | `(x, z, y, subchunk: SubChunk)` | A subchunk loaded. |
@@ -60,6 +61,43 @@ The full `GameSessionEvents` map:
 `post_tick` fires after (good for reading the resulting state). For a one-shot
 next-tick action, `session.events.once("post_tick", fn)` is handy — see
 [The Session](/api/session#sessionevents).
+
+Both run on the **packet path**: they fire while the client's `player_auth_input`
+packet is being handled by the proxy, off the game thread. That is where any
+expensive work belongs.
+
+### `movement_tick` — the game's own tick
+
+`movement_tick` is a different thing entirely: it is fired from native inside the
+client's movement tick, **before the player travels**, and it hands you a
+[`MovementState`](/api/movement) whose position and motion are writable and land
+in that same tick. Everything that moves the local player goes through it.
+
+```ts
+ctx.on("movement_tick", (state) => {
+  state.strafe(ctx.options.speed.value, 1);
+});
+```
+
+:::danger[`movement_tick` is performance-critical]
+
+The handler runs **synchronously on the game thread, with the thread blocked**,
+and the runtime abandons the hook after **20 ms**. Time spent here is taken
+straight out of the client's frame budget, and a result produced late has
+already missed the tick it was for.
+
+**Defer heavy calculations to the packet `tick` event** — pathfinding,
+raytracing, entity scans, block searches — cache the outcome, and let
+`movement_tick` do nothing but apply it. Full pattern:
+[Deferring heavy work](/api/movement#deferring-heavy-work).
+
+:::
+
+Ordering within one tick: `movement_tick` → the client travels → `tick` (the
+resulting auth-input packet) → `post_tick`. So `movement_tick` sees the tick
+before it happens, and `tick` sees what it produced. The
+[Movement page](/api/movement#where-it-sits-in-a-tick) has the full sequence and
+which fields are fresh in which.
 
 ## Packets
 

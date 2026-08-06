@@ -1,7 +1,7 @@
 ---
 id: world
 title: World & Blocks
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 # World & Blocks

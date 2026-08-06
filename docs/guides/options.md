@@ -185,7 +185,7 @@ defineModule(
         ticks: { type: "number", def: 2, min: 0, max: 5, step: 1 },
       }, (ctx) => {
         // ctx.options here are the MODE's options
-        ctx.on("tick", () => applyReversal(ctx.options.ticks.value));
+        ctx.on("movement_tick", (state) => applyReversal(state, ctx.options.ticks.value));
         ctx.onEnable(() => { /* module on AND Reversal selected */ });
       }),
     } },

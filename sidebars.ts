@@ -42,6 +42,7 @@ const sidebars: SidebarsConfig = {
         'api/session',
         'api/entities',
         'api/local-player',
+        'api/movement',
         'api/world',
         'api/inventory',
         'api/packets',

@@ -1,7 +1,7 @@
 ---
 id: packets
 title: Packets & Connection
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 # Packets & Connection
@@ -48,6 +48,24 @@ ctx.session.connection.sendIncomingPacket("set_time", { time: 6000 });
 
 The exact field set for each packet is defined by the vendored protocol
 definitions — lean on autocomplete/type errors to fill in the payload.
+
+## Packet shapes move with the client
+
+The protocol definitions are regenerated against the client version the host
+targets, so payload shapes are **not** stable across releases — this is a large
+part of why the [API is 0.x](/#the-protohaxuserscript-package). Recent changes
+worth knowing about:
+
+| Change | What it means for a script |
+| --- | --- |
+| `player_auth_input.input_data` is now `InputData[]` (a list of string tags) instead of a flags object | `packet.input_data.start_jumping` → `packet.input_data?.includes("start_jumping")`, or use the [local player's helpers](/api/local-player#auth-input-data). The field can be `undefined`. |
+| Optional fields carry an explicit `*_presence` boolean | When **injecting** a packet with an optional block (`transaction`, `item_stack_request`, `block_action`, …), set both the `_presence` flag and the value. |
+| The old `Item` network type is gone; `ItemV4` is the single item shape | Anything hand-building an item payload uses the `ItemV4` fields. |
+| `move_entity_delta` flattened: `flags` is gone, `on_ground` and the `force_*` flags are top-level, and the coordinate fields are `number \| undefined` | Read `packet.on_ground` / `packet.x` directly instead of going through `packet.flags`. |
+| Optional fields are typed `T \| undefined` rather than `field?: T` | Injected payloads must list them explicitly, even as `undefined`. |
+
+When a packet's shape changes under you, the type error points at the field —
+lean on it rather than on the old field names.
 
 ## Holding & flushing packets (the queue)
 
