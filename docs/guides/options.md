@@ -14,7 +14,7 @@ handles arrive fully typed on `ctx.options` in your
 
 ```ts
 defineModule(
-  { name: "Example", category: ModuleCategory.Client },
+  { name: "Example" },
   {
     enabled: { type: "boolean", name: "Particles", def: true },
     count:   { type: "number", def: 8, min: 1, max: 64, step: 1 },
@@ -166,10 +166,10 @@ Use the `mode(options, setup)` helper so `ctx.options` is typed inside the
 mode's setup (a plain `{ options, setup }` object also works, untyped):
 
 ```ts
-import { defineModule, mode, ModuleCategory } from "@protohax/userscript";
+import { defineModule, mode } from "@protohax/userscript";
 
 defineModule(
-  { name: "Velocity", category: ModuleCategory.Combat },
+  { name: "Velocity" },
   {
     modus: { type: "modes", def: "Reversal", modes: {
       // no setup: just a choice (with or without its own options)

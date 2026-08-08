@@ -12,10 +12,10 @@ nodes** (they render the same options the built-in modules show) and as
 importable values.
 
 ```ts
-import { defineModule, targets, ModuleCategory } from "@protohax/userscript";
+import { defineModule, targets } from "@protohax/userscript";
 
 defineModule(
-  { name: "MyAura", category: ModuleCategory.Combat },
+  { name: "MyAura" },
   {
     click:    { type: "click-scheduler" },
     target:   { type: "target", range: 3, maxRange: 10, wallRange: 2, hurtTime: true },
@@ -129,13 +129,12 @@ bounding box:
 import { face3DToRotationFace, utils } from "@protohax/userscript";
 
 (ctx) => {
-  const OWNER = {}; // stable identity for rotationScheduler requests
   const player = () => ctx.session.entityState.localPlayer;
 
   ctx.on("tick", () => {
     const [best] = ctx.options.target.getTargets(targets(), ctx.session);
     if (!best || best.isScanExtra) {
-      player().rotationScheduler.cancel(OWNER);
+      player().rotationScheduler.cancel(ctx);
       return;
     }
 
@@ -145,17 +144,26 @@ import { face3DToRotationFace, utils } from "@protohax/userscript";
 
     if (decision.type === "rotate") {
       // a new rotation is needed — decision.rotation is the (pitch, yaw) Vector2
-      player().rotationScheduler.request(decision.rotation, utils.SchedulerPriority.High, OWNER, 200);
+      player().rotationScheduler.request(decision.rotation, utils.SchedulerPriority.High, ctx, 200);
     } else if (decision.type === "cancel") {
       // the face is already in view — release the override
-      player().rotationScheduler.cancel(OWNER);
+      player().rotationScheduler.cancel(ctx);
     }
     // "keep": the current rotation still satisfies the face — leave it standing
   });
 
-  ctx.onDisable(() => player().rotationScheduler.cancel(OWNER));
+  ctx.onDisable(() => player().rotationScheduler.cancel(ctx));
 }
 ```
+
+`ctx` is the requester identity here — it is the script-side equivalent of the
+`this` the built-in modules pass, and it is per module instance per session, so
+it scopes the request exactly right. Two things follow from that: one `ctx`
+holds one request, so a module wanting two *independent* concurrent rotations
+needs a second token (any object works — see
+[`rotationScheduler`](/api/local-player#rotationscheduler)); and a
+[mode](/guides/options#modes) setup receives its own `ctx`, so its requests are
+a separate owner — cancelling with the module-level `ctx` will not clear them.
 
 The decision is a `RotationType` union: `{ type: "cancel" }` (already in the
 client's FOV), `{ type: "keep" }` (serverside FOV covers it), or

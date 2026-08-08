@@ -33,7 +33,6 @@ correct transaction packets for the current server-auth mode.
 | `dropItem(container, slot, amount)` | `void` | Drop `amount` items from a slot. |
 | `dropItemStack(container, slot)` | `void` | Drop the entire stack in a slot (and swing). |
 | `consumeItem(container, slot, amount)` | `void` | Reduce a slot's stack by `amount` and resync the client. |
-| `getLegacyRequestId()` | `number` | Allocate a decreasing legacy transaction request id. |
 | `isUsingItem` | `boolean` | Whether the player is currently using/charging an item. |
 | `itemInUseDuration` | `number` | Ticks the current item has been in use. |
 

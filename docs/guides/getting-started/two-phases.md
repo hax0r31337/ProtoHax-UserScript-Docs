@@ -11,7 +11,7 @@ writing correct modules.
 
 ```ts
 defineModule(
-  { name: "Example", category: ModuleCategory.Client },
+  { name: "Example" },
 
   // ── Phase 1: the schema — interpreted ONCE at registration ──
   {

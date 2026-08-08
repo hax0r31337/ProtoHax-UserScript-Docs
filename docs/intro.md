@@ -8,13 +8,14 @@ sidebar_position: 1
 # ProtoHax UserScript
 
 **ProtoHax UserScript** lets you write your own ProtoHax client modules in
-TypeScript. A userscript declares a module — its name, category, and options —
-and wires up listeners against the live game session: game events, packets, the
-entity/world model, the local player, inventory, and the raw packet connection.
+TypeScript. A userscript declares a module — its name and options — and wires up
+listeners against the live game session: game events, packets, the entity/world
+model, the local player, inventory, and the raw packet connection.
 
-Modules you author this way sit alongside the built-in ones in the client menu.
-They can be toggled on and off, expose sliders and toggles and color pickers,
-and read or drive the game exactly like a first-party module.
+Modules you author this way appear in the client menu under the **Script**
+category, alongside the built-in ones. They can be toggled on and off, expose
+sliders and toggles and color pickers, and read or drive the game exactly like a
+first-party module.
 
 ## The `@protohax/userscript` package
 
@@ -95,10 +96,10 @@ where the built file goes.
 ## A first module
 
 ```ts
-import { defineModule, ModuleCategory } from "@protohax/userscript";
+import { defineModule } from "@protohax/userscript";
 
 defineModule(
-  { name: "AutoSprint", category: ModuleCategory.Movement },
+  { name: "AutoSprint" },
   {
     speed: { type: "number", def: 1, min: 0, max: 5, step: 0.1 },
   },
@@ -120,7 +121,7 @@ subscribes to events. The next pages walk through each layer.
 
 - **[Project Setup](/guides/project-setup)** — the template, bundling, and installing your script.
 - **[Getting Started](/guides/getting-started)** — the module lifecycle in detail.
-- **[Modules](/guides/modules)** — metadata, categories, and toggling.
+- **[Modules](/guides/modules)** — metadata, the Script category, and toggling.
 - **[Options](/guides/options)** — sliders, toggles, enums, colors.
 - **[Events & Packets](/guides/events-and-packets)** — subscribing to the session.
 - **[Movement](/api/movement)** — `movement_tick`, `MovementState`, and sprint control.

@@ -195,7 +195,7 @@ class DiamondOreTracker extends AbstractBlockLocationTracker<void> {
 }
 
 defineModule(
-  { name: "DiamondFinder", category: ModuleCategory.Utility },
+  { name: "DiamondFinder" },
   {},
   (ctx) => {
     const tracker = new DiamondOreTracker();

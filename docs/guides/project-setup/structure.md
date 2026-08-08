@@ -13,10 +13,10 @@ as it likes — in the entry file itself, or in files the entry imports:
 
 ```ts
 // src/index.ts
-import { defineModule, ModuleCategory } from "@protohax/userscript";
+import { defineModule } from "@protohax/userscript";
 
 defineModule(
-  { name: "AutoSprint", category: ModuleCategory.Movement },
+  { name: "AutoSprint" },
   {
     speed: { type: "number", def: 1, min: 0, max: 5, step: 0.1 },
   },

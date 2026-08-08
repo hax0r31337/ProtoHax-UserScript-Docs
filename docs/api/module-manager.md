@@ -42,11 +42,12 @@ What `getModule` / `getModules` hand back:
 
 | Member | Type | Description |
 | --- | --- | --- |
-| `id` | `string` | Unique id (equals the name for singletons). |
+| `id` | `string` | Unique id. A built-in's primary instance is its name; a script module's is [`script:<name>`](/guides/modules#module-ids). |
 | `alias` | `string` | User-assigned display alias. |
 | `triggerMode` | `ModuleTriggerMode` | `Toggle` or `WhileHeld`. |
 | `state` | `Option<boolean>` | Enabled state as an option — read/set `.value`, `.subscribe` to observe. |
-| `get moduleInfo` | `ModuleInfo` | Static identity: `{ name, category, mode }`. |
+| `get moduleInfo` | `ModuleInfo` | Static identity: `{ name, category, mode }`. `category` is a [`ModuleCategory`](/guides/modules#the-script-category) — always `Script` for modules registered by a userscript. |
+| `get isPrimary` | `boolean` | Whether this is the instance spawned at registration — the one the user cannot remove. `false` for clones of an `Atomic` module. |
 | `options()` | `MapIterator<Option<any>>` | Iterate the module's options. |
 | `getOption(name)` | `Option<any> \| undefined` | Look up one option by its display name (as shown in the menu). |
 | `subscribeOptions(callback)` | `() => void` | Observe every option in the module's tree, nested children and enum values included; `callback` receives `(option, path)`. Returns an unsubscribe fn. |
@@ -55,7 +56,8 @@ What `getModule` / `getModules` hand back:
 import { moduleManager } from "@protohax/userscript";
 
 // is the built-in "Kill Aura" module enabled right now?
-// (a singleton's id is its display name, spaces and all)
+// (a built-in's id is its display name, spaces and all — your own modules
+//  are namespaced, e.g. "script:My Module")
 const killaura = moduleManager.getModule("Kill Aura");
 if (killaura?.state.value) {
   // ...

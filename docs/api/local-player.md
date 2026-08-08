@@ -183,19 +183,24 @@ import { utils } from "@protohax/userscript";
 import { utils } from "@protohax/userscript";
 
 const player = ctx.session.entityState.localPlayer;
-const OWNER = {}; // stable identity for this module's request
 
 // request from `movement_tick` so the aim lands on this tick's packet
 ctx.on("movement_tick", () => {
   player.rotationScheduler.request(
     new utils.Vector2(0, 90), // (pitch, yaw)
     utils.SchedulerPriority.High,
-    OWNER,
+    ctx, // the requester identity — see below
     50,
   );
 });
-ctx.onDisable(() => player.rotationScheduler.cancel(OWNER));
+ctx.onDisable(() => player.rotationScheduler.cancel(ctx));
 ```
+
+`provider` is compared by identity only, so anything stable works. Passing
+`ctx` is the usual choice: it is per module instance per session, matching the
+`this` the built-in modules pass, and it dies with the session. Use a separate
+token (`const OTHER = {}`, declared *inside* setup so it is not shared across
+sessions) only when one module needs two independent concurrent requests.
 
 :::caution[Request the aim from `movement_tick`, not `tick`]
 

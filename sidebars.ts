@@ -15,6 +15,7 @@ const sidebars: SidebarsConfig = {
           link: {type: 'doc', id: 'guides/project-setup/index'},
           items: [
             'guides/project-setup/bundling',
+            'guides/project-setup/banner',
             'guides/project-setup/structure',
             'guides/project-setup/installing',
           ],

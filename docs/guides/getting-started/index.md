@@ -12,12 +12,12 @@ slug: /guides/getting-started
 Every script module is created with a single call:
 
 ```ts
-import { defineModule, ModuleCategory } from "@protohax/userscript";
+import { defineModule } from "@protohax/userscript";
 
 defineModule(meta, schema, setup);
 ```
 
-- **`meta`** — the module's static identity (name, category, …). See
+- **`meta`** — the module's static identity (name, mode, …). See
   [Modules](/guides/modules).
 - **`schema`** — a plain object declaring the module's options. See
   [Options](/guides/options).
@@ -27,7 +27,7 @@ A complete module:
 
 ```ts
 defineModule(
-  { name: "Example", category: ModuleCategory.Client },
+  { name: "Example" },
   {
     enabled: { type: "boolean", name: "Feature", def: true },
   },

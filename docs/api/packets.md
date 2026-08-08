@@ -84,7 +84,7 @@ const blink: PacketQueueChecker = {
 };
 
 defineModule(
-  { name: "Blink", category: ModuleCategory.Movement },
+  { name: "Blink" },
   {},
   (ctx) => {
     ctx.onEnable(() => ctx.session.connection.addPacketQueueChecker(blink));

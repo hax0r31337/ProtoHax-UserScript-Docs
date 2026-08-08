@@ -32,12 +32,14 @@ It ships a worked example module — cancelling chat packets — in `src/index.t
 plus the build and deploy scripts described in this section.
 Bundling is rollup, configured in `rollup.config.mjs`; `script.config.mjs` holds
 the knobs you actually change (output name, sourcemap, minify, and the
-[metadata banner](/guides/project-setup/bundling#optional-a-userscript-banner)).
+[metadata banner](/guides/project-setup/banner)).
 
 ## In this section
 
 - **[Bundling](/guides/project-setup/bundling)** — what the built file must
   look like, and how to set the build up by hand.
+- **[Metadata Banner](/guides/project-setup/banner)** — the optional
+  `==UserScript==` block that keeps a built file's name and version attached.
 - **[Structure & Sharing](/guides/project-setup/structure)** — many modules in
   one script, and sharing code between scripts with `phaxuser:` imports.
 - **[Installing & Deploying](/guides/project-setup/installing)** — where the

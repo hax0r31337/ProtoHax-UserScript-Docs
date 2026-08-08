@@ -33,10 +33,11 @@ PROTOHAX_SCRIPTS_DIR=/path/to/scripts npm run deploy
 
 ## Checking it loaded
 
-Start the client and your modules appear in the menu under their categories,
-next to the built-in ones. If a module is missing, the script likely failed to
-load or threw during registration — see [Debugging](/guides/debugging) for
-where `console` output and errors end up on each platform.
+Start the client and your modules appear in the menu under the **Script**
+category, next to the built-in groups. If a module is missing, the script
+likely failed to load or threw during registration — see
+[Debugging](/guides/debugging) for where `console` output and errors end up on
+each platform.
 
 ## Next
 

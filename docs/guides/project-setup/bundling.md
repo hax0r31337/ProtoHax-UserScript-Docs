@@ -20,9 +20,9 @@ output *unbundled*:
 
 ```js
 // dist/my-script.js
-import { defineModule, ModuleCategory } from "@protohax/userscript";
+import { defineModule } from "@protohax/userscript";
 
-defineModule({ name: "AutoSprint", category: ModuleCategory.Movement }, /* ... */);
+defineModule({ name: "AutoSprint" }, /* ... */);
 ```
 
 The client resolves that bare specifier at load time to its own **live
@@ -130,42 +130,8 @@ about whether your code type-checks. Run `npm run check` (`tsc --noEmit`), or
 keep an editor with a TypeScript server open, and treat the bundle as the last
 step rather than the safety net.
 
-## Optional: a UserScript banner
+## Next
 
-A built script gets copied around, renamed, and shared. A Tampermonkey-style
-metadata block at the top of the file is a cheap way to keep its identity
-attached to it:
-
-```js
-// ==UserScript==
-// @name         my-script
-// @version      1.2.0
-// @description  Does something useful
-// @author       you
-// ==/UserScript==
-
-import { defineModule, ModuleCategory } from "@protohax/userscript";
-```
-
-It is **entirely optional** — the client neither requires nor interprets the
-block, it is just a comment — but it tells whoever ends up with the file what it
-is and which version they have.
-
-In rollup, emit it with `output.banner`:
-
-```js
-output: {
-  file: "dist/my-script.js",
-  format: "es",
-  banner: [
-    "// ==UserScript==",
-    "// @name         my-script",
-    "// @version      1.2.0",
-    "// ==/UserScript==",
-  ].join("\n"),
-},
-```
-
-The template generates it from `package.json` (with extra fields configurable in
-`script.config.mjs`) and configures terser to keep all comments, so the block
-survives minification.
+Optionally, prepend a
+**[metadata banner](/guides/project-setup/banner)** so the built file carries
+its own name and version.
