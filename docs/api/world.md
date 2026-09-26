@@ -6,19 +6,20 @@ sidebar_position: 5
 
 # World & Blocks
 
-`session.levelState` is a **`LevelStateTracker`** — the world model: blocks,
-chunks, ray-tracing, collision, and the block-state registry.
+`session.levelState` is a `LevelStateTracker`: the client's model of the world.
+Use it to read blocks and chunks, ray-trace, check collision, and look up block
+states.
 
 ## `LevelStateTracker`
 
 ### Reading & writing blocks
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
-| `getBlock(x, y, z, layer?)` | `BlockState` | Block state at a world position (layer 0 by default). |
-| `setBlock(x, y, z, layer, blockState)` | `void` | Set a block state **client-side only** (not sent to the server). |
+| `getBlock(x, y, z, layer?)` | `BlockState` | Block state at a world position. Layer 0 by default. |
+| `setBlock(x, y, z, layer, blockState)` | `void` | Set a block state **client-side only**. Nothing is sent to the server. |
 | `getBlockEntity(x, y, z)` | `BlockEntity \| undefined` | Block entity at a world position, if any. |
-| `provider` | `BlockStateProvider` | The block-state registry (look blocks up by name). |
+| `provider` | `BlockStateProvider` | The block-state registry. Look blocks up by name. |
 
 ```ts
 const block = ctx.session.levelState.getBlock(100, 64, 100);
@@ -29,11 +30,11 @@ console.log(block.meta.isFullBlock);  // true
 
 ### Ray-tracing & collision
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
-| `rayTrace(position, direction, maxDistance)` | `{ block, blockPosition, position, face } \| null` | Ray-trace against world blocks; returns the hit, or `null`. |
+| `rayTrace(position, direction, maxDistance)` | `{ block, blockPosition, position, face } \| null` | Ray-trace against world blocks. Returns the hit, or `null`. |
 | `checkCollision(position, motion)` | `{ verticalCollision, horizontalCollision }` | Collision flags for a player at `position` after applying `motion`. |
-| `getCollidingBlocks(aabb)` | `AABB[]` | World-space collision boxes intersecting the given AABB. |
+| `getCollidingBlocks(aabb, ignoreAtOrAbove?)` | `AABB[]` | World-space collision boxes that intersect the given AABB. Boxes whose bottom is at or above `ignoreAtOrAbove` are left out. |
 
 ```ts
 const p = ctx.session.entityState.localPlayer;
@@ -43,21 +44,21 @@ if (hit) console.log("looking at", hit.block.name, "face", hit.face);
 
 ### Chunks & dimension
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
-| `getChunk(chunkX, chunkZ)` | `Chunk \| undefined` | A loaded chunk by chunk coordinates. |
+| `getChunk(chunkX, chunkZ)` | `Chunk \| undefined` | A loaded chunk, by chunk coordinates. |
 | `getSubChunk(chunkX, chunkZ, subChunkY)` | `SubChunk \| undefined` | A subchunk. |
-| `chunkStorage` | `Map<bigint, Chunk>` | Loaded chunks, keyed by chunk key. |
+| `chunkStorage` | [`ChunkStorage`](#chunkstorage) | Loaded chunks, by chunk coordinates. |
 | `chunkRadius` | `number \| null` | Server view distance in chunks, if known. |
-| `get dimension` | `DimensionData` | The current dimension's data. |
-| `dimensionId` | `number` | Current dimension index. |
+| `get dimension` | `DimensionData` | Data for the current dimension. |
+| `dimensionId` | `number` | Index of the current dimension. |
 | `dimensionList` | `DimensionData[]` | Known dimensions. |
 | `difficulty` | `number` | 0 = peaceful, 1 = easy, 2 = normal, 3 = hard. |
 | `seed` | `bigint` | World seed. |
 
 ## `BlockState`
 
-The resolved state of a single block. Implements `PaletteItem`.
+The resolved state of one block. Implements `PaletteItem`.
 
 | Member | Type | Description |
 | --- | --- | --- |
@@ -67,7 +68,8 @@ The resolved state of a single block. Implements `PaletteItem`.
 | `get states` | `Record<string, any>` | Simplified block-state values, e.g. `{ facing_direction: 2 }`. |
 | `nbtStates` | `Tags['compound']` | Raw NBT block-state compound. |
 | `tags` | `Set<string>` | Block tags. |
-| `meta` | `BlockMeta` | Derived block metadata (see below). |
+| `meta` | `BlockMeta` | Derived block metadata ([below](#blockmeta)). |
+| `get isAir` | `boolean` | Whether this is air. Goes by name, not collision: a torch or water has no collision box but isn't air. |
 
 ### `BlockMeta`
 
@@ -83,7 +85,7 @@ The resolved state of a single block. Implements `PaletteItem`.
 
 ### `BlockStateProvider`
 
-`levelState.provider` — look up any block state by identifier:
+`levelState.provider`. Looks up any block state by identifier:
 
 ```ts
 const stone = ctx.session.levelState.provider.getBlock("minecraft:stone");
@@ -100,50 +102,78 @@ const stone = ctx.session.levelState.provider.getBlock("minecraft:stone");
 
 ## Chunks: `Chunk`, `SubChunk`, `Palette`
 
-`Chunk` and `SubChunk` are **value exports**, so you can name them and narrow
-with `instanceof`.
+`Chunk` and `SubChunk` are type-only exports. Use `import type { Chunk,
+SubChunk }` to name them. You can't use them with `instanceof`.
+
+### `ChunkStorage`
+
+`levelState.chunkStorage` holds every loaded chunk, looked up by chunk
+coordinates. Before 0.5 it was a `Map<bigint, Chunk>` keyed by `chunk.key()`.
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `size` | `number` | Number of loaded chunks. |
+| `get(x, z)` | `Chunk \| undefined` | The chunk at chunk coordinates, if loaded. |
+| `has(x, z)` | `boolean` | Whether a chunk is loaded at chunk coordinates. |
+| `values()` | `IterableIterator<Chunk>` | Every loaded chunk. You can delete while iterating. |
+| `set(chunk)` | `void` | Store a chunk at its own coordinates, replacing any already there. |
+| `delete(x, z)` | `boolean` | Remove a chunk. Returns whether there was one. |
+| `clear()` | `void` | Remove every chunk. |
+
+```ts
+const chunks = ctx.session.levelState.chunkStorage;
+console.log(chunks.size, "chunks loaded");
+
+for (const chunk of chunks.values()) {
+  console.log(chunk.x, chunk.z);
+}
+```
+
+You'll mostly read from it. `set`, `delete` and `clear` only change the
+tracker's own copy of the world.
 
 ### `Chunk`
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
-| `x` / `z` | `number` | Chunk coordinates (block coord `>> 4`). |
-| `provider` | `BlockStateProvider` | Resolves runtime IDs in this chunk. |
-| `subChunks` | `SubChunk[]` | Subchunks, index 0 = bottom (see `dimension.min_height`). |
+| `x` / `z` | `number` | Chunk coordinates (block coordinate `>> 4`). |
+| `provider` | `BlockStateProvider` | Resolves runtime ids in this chunk. |
+| `subChunks` | `SubChunk[]` | Subchunks. Index 0 is the bottom (see `dimension.min_height`). |
 | `blockEntities` | `BlockEntity[]` | Block entities tracked in this chunk. |
-| `key()` | `bigint` | 64-bit storage key (packed X/Z). |
+| `key()` | `bigint` | X and Z packed into one 64-bit key. |
 | `getSubChunk(i)` | `SubChunk` | Subchunk at vertical index `i` (0 = bottom). |
 
 ### `SubChunk`
 
-A 16×16×16 section. Block positions inside are packed indices (0–4095).
+A 16×16×16 section. Block positions inside it are packed indices (0–4095).
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
-| `provider` | `BlockStateProvider` | Resolves runtime IDs. |
-| `parent` | `Chunk` | The owning chunk. |
-| `defaultLayer` | `Palette<BlockState>` | Layer 0 (primary block layer). |
-| `extraLayers` | `Palette<BlockState>[]` | Extra layers (e.g. waterlogging); index 0 = layer 1. |
-| `index(x, y, z)` | `number` | Pack local coords (0–15) into a block index. |
-| `fromIndex(index)` | `{ x, y, z }` | Unpack a block index into local coords. |
-| `getBlock(x, y, z, layer?)` | `BlockState` | Read a block at local coords. |
-| `setBlock(x, y, z, layer, block)` | `void` | Write a block at local coords. |
+| `provider` | `BlockStateProvider` | Resolves runtime ids. |
+| `parent` | `Chunk` | The chunk this belongs to. |
+| `defaultLayer` | `Palette<BlockState>` | Layer 0, the main block layer. |
+| `extraLayers` | `Palette<BlockState>[]` | Extra layers (e.g. waterlogging). Index 0 here is layer 1. |
+| `index(x, y, z)` | `number` | Pack local coordinates (0–15) into a block index. |
+| `fromIndex(index)` | `{ x, y, z }` | Unpack a block index into local coordinates. |
+| `getBlock(x, y, z, layer?)` | `BlockState` | Read a block at local coordinates. |
+| `setBlock(x, y, z, layer, block)` | `void` | Write a block at local coordinates. |
 | `hasBlock(block, layer?)` | `boolean` | Whether the block appears on the layer. |
 | `getLayer(layer)` | `Palette<BlockState>` | The palette for a layer (0 = default). |
 
 ### `Palette<T>`
 
-Backs a subchunk layer — the distinct entries plus per-position lookup.
+Stores one subchunk layer: the list of distinct entries, plus a lookup for each
+position.
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
 | `palette` | `T[]` | The distinct entries present (e.g. block states). |
 | `get(index)` | `T` | Entry at a block index. |
 | `set(index, value)` | `void` | Set the entry at a block index. |
 | `has(item)` | `boolean` | Whether the entry is present. |
-| `positions(item)` | `Generator<number>` | Iterate every block index holding `item`. |
+| `positions(item)` | `Generator<number>` | Every block index holding `item`. |
 
-Iterating all stone in a subchunk:
+Finding all stone in a subchunk:
 
 ```ts
 const sub = ctx.session.levelState.getSubChunk(0, 0, 4);
@@ -160,36 +190,41 @@ if (sub) {
 
 ## Tracking blocks: `AbstractBlockLocationTracker`
 
-To maintain a **live set of blocks in the world** — kept in sync as chunks load,
-unload, and blocks update — subclass `AbstractBlockLocationTracker<T>`. This is
-the same primitive the built-in Chest ESP / Block ESP modules use.
+Subclass `AbstractBlockLocationTracker<T>` to keep a **live set of blocks** that
+stays in sync as chunks load and unload and blocks change. The built-in Chest
+ESP and Block ESP modules use the same class.
 
-You implement three methods; the base handles the chunk/block bookkeeping:
+You implement three methods, and the base class handles the chunk and block
+bookkeeping:
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
-| `canTrackBlock(block)` | `boolean` | **You implement.** Return true for blocks to track. |
+| `canTrackBlock(block)` | `boolean` | **You implement.** Return `true` for blocks you want tracked. |
 | `onBlockAdded(entry)` | `void` | **You implement.** A tracked block appeared. |
 | `onBlockRemoved(entry)` | `void` | **You implement.** A tracked block was removed. |
-| `entries` | `Map<bigint, BlockEntry<T>>` | All currently tracked blocks, keyed by packed position. |
+| `entries` | `Map<bigint, BlockEntry<T>>` | All tracked blocks, keyed by packed position. |
 | `reset()` | `void` | Re-scan all loaded chunks. |
-| `bindToSession(session)` | `void` | Attach and scan already-loaded chunks. |
+| `bindToSession(session)` | `void` | Attach, and scan the chunks already loaded. |
 | `unbindFromSession()` | `void` | Detach and clear. |
 
 `BlockEntry<T>` extends `IVector3` (`x`/`y`/`z`) and adds `block: BlockState`
 and an optional `extra?: T`.
 
 ```ts
-import { AbstractBlockLocationTracker, type BlockState } from "@protohax/userscript";
+import {
+  AbstractBlockLocationTracker,
+  type BlockEntry,
+  type BlockState,
+} from "@protohax/userscript";
 
 class DiamondOreTracker extends AbstractBlockLocationTracker<void> {
   canTrackBlock(block: BlockState): boolean {
     return block.name === "minecraft:diamond_ore";
   }
-  onBlockAdded(entry) {
+  onBlockAdded(entry: BlockEntry<void>) {
     console.log("diamond at", entry.x, entry.y, entry.z);
   }
-  onBlockRemoved(entry) {
+  onBlockRemoved(entry: BlockEntry<void>) {
     console.log("gone", entry.x, entry.y, entry.z);
   }
 }
@@ -205,6 +240,9 @@ defineModule(
 );
 ```
 
-> **Note — client-side only.** `setBlock` and tracked state are local to your
-> client. They change what your client sees; they do not modify the server's
-> world.
+:::note[Client-side only]
+
+`setBlock` and tracked state only exist on your client. They change what your
+client sees, not the server's world.
+
+:::

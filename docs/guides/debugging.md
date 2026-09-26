@@ -7,7 +7,7 @@ title: Debugging
 
 ## Where `console` output goes
 
-`console.log` / `console.warn` / `console.error` from a script are piped to the
+`console.log`, `console.warn`, and `console.error` from your script go to the
 client's log:
 
 | Platform | Where |
@@ -15,7 +15,7 @@ client's log:
 | Windows | `%TEMP%\ProtoHax\log.txt` |
 | Android | logcat, under the `ProtoHax` tag |
 
-Tail it live while you test:
+Follow it live while you test:
 
 ```powershell
 # Windows
@@ -29,29 +29,36 @@ adb logcat -s ProtoHax
 
 ## Errors land there too
 
-A setup function or lifecycle hook that throws is logged and
-[contained](/guides/getting-started/context#errors-are-contained) — the session
-keeps running for every other module. So a module that silently "does nothing"
-usually left its stack trace in the log: check there first.
+When a setup function or lifecycle hook throws, the error is logged and
+[contained](/guides/getting-started/context#errors-are-contained): the session
+keeps running for every other module.
+
+So if a module quietly "does nothing", check the log first. The stack trace is
+probably there.
 
 ## In-game feedback
 
-For quick state checks mid-game, a client-side chat line beats alt-tabbing to
-the log — it is local-only and never sent to the server:
+For quick checks mid-game, a client-side chat line is faster than switching to
+the log. It's local only and never sent to the server:
 
 ```ts
 ctx.session.sendChatMessage(`target: ${target?.username ?? "none"}`);
 ```
 
-Do **not** log from a [`movement_tick`](/api/movement) handler on every tick:
-that handler blocks the game thread, and logging 20 lines a second is enough to
-be felt. Log from `tick` instead, or gate it behind a counter.
+:::warning
+
+Don't log from a [`movement_tick`](/api/movement) or
+[`input_tick`](/api/input) handler on every tick. Those handlers block the game
+thread, and 20 log lines a second is enough to notice.
+Log from `tick` instead, or only every N ticks using a counter.
+
+:::
 
 ## Reminders
 
-- Scripts are read at **startup** — a rebuild needs a client restart (or
-  `npm run dev` plus a restart) to take effect. If your latest `console.log`
-  never appears, you are probably still running the old bundle.
-- The bundler does **not** type-check; run `npm run check`. A script that fails
-  to parse or throws at load simply won't register its modules — the log says
-  why.
+- Scripts are read at **startup**. After a rebuild you need to restart the
+  client (`npm run dev` redeploys, but you still restart). If your newest
+  `console.log` never shows up, you're probably still running the old bundle.
+- The bundler does **not** type-check, so run `npm run check`. A script that
+  fails to parse or throws while loading won't register its modules, and the
+  log will say why.

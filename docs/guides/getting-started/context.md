@@ -5,60 +5,62 @@ title: The Context
 
 # The Context (`ctx`)
 
-`ctx` is how a module observes and reacts. A fresh one is handed to your
-[setup function](/guides/getting-started/two-phases#phase-2--setupctx) for each
-session. Its members:
+`ctx` is how your module watches the game and reacts to it. Your
+[setup function](/guides/getting-started/two-phases#phase-2--setupctx) gets a
+fresh one for each session. Here's what's on it:
 
 | Member | Purpose |
 | --- | --- |
-| `ctx.session` | The live [`GameSession`](/api/session) — entities, world, items, connection. |
+| `ctx.session` | The live [`GameSession`](/api/session): entities, world, items, connection. |
 | `ctx.options` | The live [option handles](/guides/options), typed from the schema. |
 | `ctx.on(event, cb)` | Subscribe to a [game event](/guides/events-and-packets#game-events). |
-| `ctx.onPacket(name, cb)` | Subscribe to an inbound [packet](/guides/events-and-packets#packets). |
+| `ctx.onPacket(name, cb)` | Subscribe to a [packet](/guides/events-and-packets#packets) on the real connection, in either direction. |
 | `ctx.onInjectedPacket(name, cb)` | Subscribe to a locally-injected packet. |
-| `ctx.onEnable(cb)` | Run `cb` each time the module becomes enabled. |
-| `ctx.onDisable(cb)` | Run `cb` each time the module becomes disabled. |
+| `ctx.onEnable(cb)` | Run `cb` each time the module is enabled. |
+| `ctx.onDisable(cb)` | Run `cb` each time the module is disabled. |
 
 ## Listeners only fire while enabled
 
-A listener wired through `ctx.on` / `ctx.onPacket` / `ctx.onInjectedPacket`
-**only fires while the module is toggled on**. You do not need to guard event
-handlers with an "am I enabled?" check — being disabled silences them.
+Listeners added with `ctx.on`, `ctx.onPacket`, or `ctx.onInjectedPacket`
+**only fire while the module is toggled on**. You don't need an "am I enabled?"
+check in your handlers; disabling the module silences them.
 
-`onEnable` / `onDisable` fire on the *transitions*, which is where you put
-setup/teardown that must happen each time the user flips the toggle (resetting
-state, sending a one-shot packet, etc.).
+`onEnable` and `onDisable` fire on the *switch* itself. Use them for anything
+that should happen each time the user flips the toggle, like resetting state or
+sending a one-off packet.
 
 ```ts
 (ctx) => {
   ctx.onEnable(() => console.log("turned on"));
   ctx.onDisable(() => console.log("turned off"));
 
-  // Fires every movement tick, but only while enabled.
+  // Every movement tick, but only while enabled.
   ctx.on("movement_tick", (state) => state.jump());
 };
 ```
 
-Inside an [executable mode](/guides/options#modes)'s setup, the same rules
-apply with one addition: its listeners and hooks are also gated on that mode
-being selected.
+The same rules apply inside an [executable mode](/guides/options#modes)'s
+setup, with one addition: its listeners and hooks also only fire while that
+mode is selected.
 
 ## Per-session state
 
-The setup function runs fresh for each session, so a plain variable inside it
-**is** per-session state — this is the default, and it needs no machinery:
+Setup runs fresh for each session, so a plain variable inside it already **is**
+per-session state. That's the default, and it needs nothing extra:
 
 ```ts
 (ctx) => {
-  let ticks = 0; // one per session, by construction
+  let ticks = 0; // one per session
   ctx.on("tick", () => { ticks++; });
 };
 ```
 
-What a closure can't do is span *several* setup functions — say, a module's own
-setup and its [modes](/guides/options#modes)' setups, which each get their own
-closure. For that, `utils.sessionLocal` creates a typed store keyed by the
-session; every setup that calls it with `ctx.session` sees the same object:
+What a closure can't do is share state across *several* setup functions. For
+example, a module's own setup and its [modes](/guides/options#modes)' setups
+each get their own closure.
+
+For that, use `utils.sessionLocal`. It creates a typed store keyed by session;
+every setup that calls it with `ctx.session` gets the same object:
 
 ```ts
 import { utils } from "@protohax/userscript";
@@ -71,17 +73,16 @@ const combat = utils.sessionLocal(() => ({ ticks: 0, target: null as string | nu
 };
 ```
 
-Values are dropped automatically when the session goes away. Two things to
-keep in mind:
+Values are dropped automatically when the session ends. Keep in mind:
 
-- It is per-**session**, not per-enable — state survives the module being
-  toggled off and on. Reset it in `ctx.onEnable` if it shouldn't.
-- Do **not** reach for a module-scope `let` instead: that one variable would be
+- It's per-**session**, not per-enable. State survives the module being toggled
+  off and on again. Reset it in `ctx.onEnable` if that's not what you want.
+- **Don't** use a module-level `let` instead. That single variable would be
   shared by *every* session (and every copy of an Atomic module) at once.
 
 ## Errors are contained
 
-If your setup function throws, or a lifecycle hook throws, the error is logged
-and **does not break the session for other modules**. A broken script degrades
-gracefully rather than taking the client down. See
-[Debugging](/guides/debugging) for where those logs end up on each platform.
+If your setup function or a lifecycle hook throws, the error is logged and
+**doesn't break the session for other modules**. A broken script fails
+gracefully instead of taking the client down. See
+[Debugging](/guides/debugging) for where the logs go on each platform.

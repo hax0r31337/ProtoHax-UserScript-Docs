@@ -6,15 +6,16 @@ sidebar_position: 4
 
 # Events & Packets
 
-A module reacts by subscribing through `ctx`. There are two layers:
+Your module reacts to the game by subscribing through `ctx`, at one of two
+levels:
 
-- **[Game events](#game-events)** (`ctx.on`) — high-level, decoded signals: a
-  tick passed, an entity spawned, a block changed.
-- **[Packets](#packets)** (`ctx.onPacket` / `ctx.onInjectedPacket`) — the raw
+- **[Game events](#game-events)** (`ctx.on`): high-level, decoded signals, like
+  a tick passing, an entity spawning, or a block changing.
+- **[Packets](#packets)** (`ctx.onPacket` / `ctx.onInjectedPacket`): the raw
   protocol, one handler per packet type.
 
-All three bind to the module's enabled state and tear down with the session — you
-never unsubscribe by hand. See
+All three only fire while the module is enabled, and they're torn down with the
+session, so you never unsubscribe by hand. See
 [The Context](/guides/getting-started/context#listeners-only-fire-while-enabled).
 
 ## Game events
@@ -34,9 +35,10 @@ The full `GameSessionEvents` map:
 | `local_player_initialized` | `()` | The local player finished initializing. |
 | `teleport` | `()` | The local player was teleported. |
 | `dimension_change` | `()` | The dimension changed. |
-| `tick` | `()` | Each game tick (before processing). |
-| `post_tick` | `()` | Each game tick (after processing). |
-| `movement_tick` | `(state: MovementState)` | The game's own movement tick, before the client travels. **Performance-critical** — see below. |
+| `tick` | `()` | Each game tick, while its auth-input packet is being handled. |
+| `post_tick` | `()` | Each game tick, after its auth-input packet was handled. |
+| `input_tick` | `(state: InputState)` | The game takes the player's input for a tick, before `movement_tick`. **Performance-critical**, see below. |
+| `movement_tick` | `(state: MovementState)` | The game's own movement tick, before the client travels. **Performance-critical**, see below. |
 | `entity_spawn` | `(entity: AbstractEntity)` | An entity appeared. |
 | `entity_despawn` | `(entity: AbstractEntity)` | An entity was removed. |
 | `chunk_load` | `(x, z, y, subchunk: SubChunk)` | A subchunk loaded. |
@@ -57,21 +59,25 @@ The full `GameSessionEvents` map:
 
 ### `tick` vs. `post_tick`
 
-`tick` fires before the client processes the tick (good for injecting input);
-`post_tick` fires after (good for reading the resulting state). For a one-shot
-next-tick action, `session.events.once("post_tick", fn)` is handy — see
-[The Session](/api/session#sessionevents).
+- `tick` fires **while** the proxy handles the tick's `player_auth_input`
+  packet, before it's sent on. Good for editing that packet's input flags.
+- `post_tick` fires **after** every listener has handled it. Good for reading
+  the resulting state.
 
-Both run on the **packet path**: they fire while the client's `player_auth_input`
-packet is being handled by the proxy, off the game thread. That is where any
-expensive work belongs.
+For a one-off action on the next tick, `session.events.once("post_tick", fn)`
+is handy. See [The Session](/api/session#sessionevents).
+
+Both run on the **packet path**: they fire while the proxy handles the client's
+`player_auth_input` packet, off the game thread. That's where expensive work
+belongs.
 
 ### `movement_tick` — the game's own tick
 
-`movement_tick` is a different thing entirely: it is fired from native inside the
-client's movement tick, **before the player travels**, and it hands you a
-[`MovementState`](/api/movement) whose position and motion are writable and land
-in that same tick. Everything that moves the local player goes through it.
+`movement_tick` is a different beast. It's fired from native code inside the
+client's movement tick, **before the player travels**. It gives you a
+[`MovementState`](/api/movement) whose position and motion you can write, and
+your changes apply in that same tick. Everything that moves the local player
+goes through it.
 
 ```ts
 ctx.on("movement_tick", (state) => {
@@ -81,28 +87,54 @@ ctx.on("movement_tick", (state) => {
 
 :::danger[`movement_tick` is performance-critical]
 
-The handler runs **synchronously on the game thread, with the thread blocked**,
-and the runtime abandons the hook after **20 ms**. Time spent here is taken
-straight out of the client's frame budget, and a result produced late has
-already missed the tick it was for.
+The handler runs **synchronously on the game thread, which is blocked while it
+runs**. Any time you spend here comes straight out of the client's frame
+budget. If the hook hasn't answered after **200 ms**, the runtime gives up and
+the tick goes ahead unmodified.
 
-**Defer heavy calculations to the packet `tick` event** — pathfinding,
-raytracing, entity scans, block searches — cache the outcome, and let
-`movement_tick` do nothing but apply it. Full pattern:
+**Do heavy work in the packet `tick` event instead**: pathfinding, raytracing,
+entity scans, block searches. Cache the result there, and have `movement_tick`
+only apply it. Full pattern:
 [Deferring heavy work](/api/movement#deferring-heavy-work).
 
 :::
 
-Ordering within one tick: `movement_tick` → the client travels → `tick` (the
-resulting auth-input packet) → `post_tick`. So `movement_tick` sees the tick
-before it happens, and `tick` sees what it produced. The
-[Movement page](/api/movement#where-it-sits-in-a-tick) has the full sequence and
-which fields are fresh in which.
+### `input_tick` — the player's input
+
+`input_tick` fires just before `movement_tick`, at the moment the game takes
+the player's input. It gives you an [`InputState`](/api/input) with the move
+keys, the analog stick and the sneak key. What you write there is that tick's
+input, as if the player had pressed it.
+
+```ts
+ctx.on("input_tick", (input) => {
+  input.setSneak(true);
+});
+```
+
+It runs on the game thread too, so the same performance rules apply.
+
+### Order within a tick
+
+1. `input_tick`: the game takes the input. Sprint and sneak changes made here
+   apply on this tick.
+2. The game's sprint and sneak systems run, then its own jump logic.
+3. `movement_tick`: position, motion and jump writes apply on this tick. Sprint
+   and sneak intents requested here apply on the next tick.
+4. The client travels.
+5. `tick`: the resulting auth-input packet is being handled.
+6. `post_tick`: that packet has been handled.
+
+So `input_tick` and `movement_tick` see the tick before it happens, and `tick`
+sees what it produced. The
+[Movement page](/api/movement#where-it-sits-in-a-tick) has the full sequence
+and which fields are fresh at each step.
 
 ## Packets
 
-`ctx.onPacket(name, cb)` subscribes to an **inbound** packet;
-`ctx.onInjectedPacket(name, cb)` subscribes to a **locally-injected** one.
+- `ctx.onPacket(name, cb)` subscribes to a packet on the **real connection**,
+  in either direction. `packet.isIncoming` tells you which way it's going.
+- `ctx.onInjectedPacket(name, cb)` subscribes to a **locally-injected** one.
 
 ```ts
 ctx.onPacket("add_player", (packet) => {
@@ -110,14 +142,21 @@ ctx.onPacket("add_player", (packet) => {
 });
 ```
 
-`name` is any key of `FullPacketEvents` — the full generated protocol packet map
-plus one extra event, `post_packet` (fires after any packet is processed). Your
-editor autocompletes every packet name and its payload shape.
+`name` can be any key of `FullPacketEvents`. That's the full generated protocol
+packet map, plus one extra event, `post_packet`, which fires after any packet is
+processed. Your editor autocompletes every packet name and its payload.
+
+There's no catch-all event: you subscribe to each packet by name. To see every
+packet, register a [queue checker](/api/packets#packetqueuechecker).
+
+Some packets come in several variants. `text`, for example, has one per message
+`type`, and not every variant has a `message`. Check the variant first, and
+TypeScript narrows the packet to that variant's fields.
 
 ### Mutating packets
 
-Every packet handler receives the parsed packet with a small wrapper contract
-(`PacketWrapper`) mixed into the payload:
+Every packet handler gets the parsed packet with a small `PacketWrapper`
+contract mixed in:
 
 | Member | Description |
 | --- | --- |
@@ -125,34 +164,45 @@ Every packet handler receives the parsed packet with a small wrapper contract
 | `isCancelled` | Set to `true` to **drop** the packet (it won't be forwarded). |
 | `markDirty()` | Call after **editing** the packet's fields so your change is re-encoded and forwarded. |
 
-**Dropping** a packet — set `isCancelled`:
+To **drop** a packet, set `isCancelled`:
 
 ```ts
 ctx.onPacket("text", (packet) => {
+  if (packet.type !== "chat") return;
   if (packet.message.includes("spam")) {
     packet.isCancelled = true;
   }
 });
 ```
 
-**Editing** a packet — mutate its fields, then call `markDirty()`:
+To **edit** a packet, change its fields, then call `markDirty()`:
 
 ```ts
 ctx.onPacket("text", (packet) => {
+  if (packet.type !== "chat") return;
   packet.message = packet.message.toUpperCase();
   packet.markDirty(); // without this, the original bytes are sent unchanged
 });
 ```
 
-> **⚠ `markDirty()` is required for edits.** Changing a field on the packet
-> object does nothing on its own — the connection forwards the original bytes
-> unless you call `markDirty()`, which tells it to re-encode from your modified
-> object. (Cancelling with `isCancelled` needs no `markDirty()`.)
+:::warning[`markDirty()` is required for edits]
 
-To *send* packets (rather than react to them), and to hold/flush the packet
+Changing a field on the packet object does nothing by itself. The connection
+forwards the original bytes unless you call `markDirty()`, which tells it to
+re-encode from your modified object. (Cancelling with `isCancelled` doesn't
+need `markDirty()`.)
+
+:::
+
+To *send* packets instead of reacting to them, or to hold and flush the packet
 queue, use [`session.connection`](/api/packets).
 
-> **Note — injected vs. inbound.** `onPacket` sees packets arriving from the
-> server. `onInjectedPacket` sees packets your (or another module's) code
-> injected via [`connection.sendIncomingPacket`](/api/packets#sending-packets).
-> Subscribe to the one matching the source you care about.
+:::note[Injected vs. inbound]
+
+`onPacket` sees packets travelling between the real client and server.
+`onInjectedPacket` sees packets that your code (or another module's) injected
+with [`connection.sendIncomingPacket` or
+`sendOutgoingPacket`](/api/packets#sending-packets). Subscribe to whichever
+matches the source you care about.
+
+:::

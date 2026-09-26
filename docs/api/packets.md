@@ -6,72 +6,82 @@ sidebar_position: 7
 
 # Packets & Connection
 
-`session.connection` is a **`Connection`** — the man-in-the-middle link between
-the client and the server. Through it you inject packets in either direction and
-gate/flush the packet queue.
+`session.connection` is a `Connection`: the man-in-the-middle link between the
+client and the server. Use it to inject packets in either direction and to hold
+or release queued packets.
 
-To *listen* for packets, use [`ctx.onPacket` / `ctx.onInjectedPacket`](/guides/events-and-packets#packets).
-This page is about *sending* and *flow-controlling* them.
+This page covers *sending* packets and *controlling their flow*. To *listen* for
+packets, use
+[`ctx.onPacket` / `ctx.onInjectedPacket`](/guides/events-and-packets#packets).
 
 ## `Connection`
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
 | `sendOutgoingPacket(type, data)` | `void` | Inject a packet toward the **server** (client → server). |
 | `sendIncomingPacket(type, data)` | `void` | Inject a packet toward the **client** (server → client). |
 | `addPacketQueueChecker(checker)` | `void` | Register a checker that can hold matching packets in the queue. |
-| `removePacketQueueChecker(checker)` | `void` | Remove a previously registered checker. |
-| `flushHeld(isIncoming, filter?)` | `void` | Drain (some of) the held queue for a direction. |
-| `actualProtocolVersion` | `number` | The protocol version negotiated with the server. |
+| `removePacketQueueChecker(checker)` | `void` | Remove a registered checker. |
+| `flushHeld(isIncoming, filter?)` | `void` | Release some or all held packets for one direction. |
+| `actualProtocolVersion` | `number` | The protocol version agreed with the server. |
 
 ## Sending packets
 
-`type` is any packet name from the [`PacketEvents`](/guides/events-and-packets#packets)
-map; `data` is that packet's payload (minus the wrapper fields, typed as
-`PacketData<T>`). Your editor autocompletes both.
+`type` is any packet name from the
+[`PacketEvents`](/guides/events-and-packets#packets) map. `data` is that
+packet's payload without the wrapper fields, typed as `PacketData<T>`. Your
+editor autocompletes both.
+
+Some packets come in several variants. `text`, for example, has one variant per
+message `type`. `PacketData<T>` keeps the variants apart, so the `type` you pick
+decides which other fields are required.
 
 ```ts
-// tell the server we sent a chat message
+// send a chat message to the server
+// (localPlayer.sendChatMessage does this for you)
+const { localPlayer } = ctx.session.entityState;
 ctx.session.connection.sendOutgoingPacket("text", {
   type: "chat",
+  category: "authored", // chat, whisper and announcement carry an author
   needs_translation: false,
-  source_name: "",
+  source_name: localPlayer.username,
   message: "hello",
-  xuid: "",
+  xuid: localPlayer.xuid,
   platform_chat_id: "",
-  filtered_message: "",
+  has_filtered_message: false,
 });
 
 // make the CLIENT think it received a packet
 ctx.session.connection.sendIncomingPacket("set_time", { time: 6000 });
 ```
 
-The exact field set for each packet is defined by the vendored protocol
-definitions — lean on autocomplete/type errors to fill in the payload.
+The fields of each packet come from the bundled protocol definitions. Let
+autocomplete and type errors guide you when filling in a payload.
 
 ## Packet shapes move with the client
 
-The protocol definitions are regenerated against the client version the host
-targets, so payload shapes are **not** stable across releases — this is a large
+The protocol definitions are regenerated for each client version the host
+targets, so packet shapes are **not** stable between releases. This is a big
 part of why the [API is 0.x](/#the-protohaxuserscript-package). Recent changes
-worth knowing about:
+worth knowing:
 
-| Change | What it means for a script |
+| Change | What it means for your script |
 | --- | --- |
-| `player_auth_input.input_data` is now `InputData[]` (a list of string tags) instead of a flags object | `packet.input_data.start_jumping` → `packet.input_data?.includes("start_jumping")`, or use the [local player's helpers](/api/local-player#auth-input-data). The field can be `undefined`. |
-| Optional fields carry an explicit `*_presence` boolean | When **injecting** a packet with an optional block (`transaction`, `item_stack_request`, `block_action`, …), set both the `_presence` flag and the value. |
-| The old `Item` network type is gone; `ItemV4` is the single item shape | Anything hand-building an item payload uses the `ItemV4` fields. |
-| `move_entity_delta` flattened: `flags` is gone, `on_ground` and the `force_*` flags are top-level, and the coordinate fields are `number \| undefined` | Read `packet.on_ground` / `packet.x` directly instead of going through `packet.flags`. |
-| Optional fields are typed `T \| undefined` rather than `field?: T` | Injected payloads must list them explicitly, even as `undefined`. |
+| `player_auth_input.input_data` is now `InputData[]` (a list of string tags), not a flags object | `packet.input_data.start_jumping` becomes `packet.input_data.includes("start_jumping")`, or use the [local player's helpers](/api/local-player#auth-input-data). The list is always there. |
+| The `*_presence` booleans are gone. An optional field is present when it's set | Check the field itself (`if (packet.transaction)`), not `transaction_presence`. When **injecting**, set the field to send it and leave it out to omit it. |
+| Optional fields are typed `field?: T` instead of `T \| undefined` | You can leave them out of injected payloads. |
+| Packets with variants list their shared fields once: `Shared & (VariantA \| VariantB \| …)` | Check the discriminant first (`packet.type === "chat"`), then read that variant's fields, such as `message`. |
+| The old `Item` network type is gone. `ItemV4` is the only item shape | Build item payloads with the `ItemV4` fields. |
+| `move_entity_delta` is flattened: `flags` is gone, `on_ground` and the `force_*` flags are top-level, and the coordinate fields are optional | Read `packet.on_ground` / `packet.x` directly instead of through `packet.flags`. |
 
-When a packet's shape changes under you, the type error points at the field —
-lean on it rather than on the old field names.
+When a packet's shape changes, the type error points at the field. Trust it over
+the old field names.
 
 ## Holding & flushing packets (the queue)
 
 A **queue checker** can hold packets in a per-direction queue instead of letting
-them pass. This is how features like "blink" (freeze outgoing movement, then
-release) are built.
+them through. This is how features like "blink" are built: freeze outgoing
+movement, then release it later.
 
 ```ts
 import type { PacketQueueChecker } from "@protohax/userscript";
@@ -110,22 +120,30 @@ interface PacketQueueChecker {
 }
 ```
 
-Called per packet — before event dispatch for incoming, after dispatch for
-outgoing.
+Every checker is called for every packet, in both directions and including
+injected ones, even when another checker already chose to hold it. Incoming
+packets are checked before event dispatch; outgoing packets after it. You can
+still edit `body` there and call `body.markDirty()`.
+
+That makes a checker the way to see **every** packet: there's no catch-all
+packet event. It has a cost, though. Normally a packet with no listeners is
+forwarded without being decoded. While any checker is registered,
+every packet gets decoded. So register a checker only while you need it, as in
+the blink example above.
 
 ### `flushHeld(isIncoming, filter?)`
 
-Drain the held queue for one direction. Without a `filter`, **all** held packets
-are released in FIFO order. With a `filter`, each `HeldPacket`'s fate is decided
-individually.
+Releases held packets for one direction. Without a `filter`, **all** held
+packets are released in FIFO order. With a `filter`, you decide what happens to
+each `HeldPacket`.
 
-`flushHeld` does **not** re-run the gate — released packets go through
-regardless of current checker state.
+`flushHeld` does **not** run the checkers again. Released packets go through
+even if a checker would hold them now.
 
 ```ts
 import { FlushAction } from "@protohax/userscript";
 
-// selectively release: drop movement, release everything else
+// drop movement, release everything else
 ctx.session.connection.flushHeld(false, (held) => {
   if (held.name === "player_auth_input") return FlushAction.Drop;
   return FlushAction.Release;
@@ -136,9 +154,9 @@ The filter returns a `FlushAction`:
 
 | Value | Meaning |
 | --- | --- |
-| `FlushAction.Release` | Remove from queue, dispatch through events, then send. |
-| `FlushAction.Drop` | Remove from queue without sending (silently discarded). |
-| `FlushAction.Keep` | Leave in queue, continue iterating. |
+| `FlushAction.Release` | Remove from the queue, dispatch through events, then send. |
+| `FlushAction.Drop` | Remove from the queue and discard without sending. |
+| `FlushAction.Keep` | Leave in the queue and move on to the next packet. |
 
 ### `HeldPacket`
 

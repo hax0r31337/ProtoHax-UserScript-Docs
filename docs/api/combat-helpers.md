@@ -6,9 +6,9 @@ sidebar_position: 9
 
 # Combat Helpers
 
-The machinery the built-in combat modules share — target selection, humanized
-clicking, and rotation strategies — is available to scripts, both as **schema
-nodes** (they render the same options the built-in modules show) and as
+The built-in combat modules share some machinery: target selection, humanized
+clicking, and rotation strategies. Your scripts can use it too, either as
+**schema nodes** (which show the same options the built-in modules do) or as
 importable values.
 
 ```ts
@@ -27,23 +27,22 @@ defineModule(
 
 ## The Targets module
 
-`targets()` returns the live **Targets** singleton — the user's shared
-target-selection settings (entity kinds, anti-bot, team) that every combat
-module consults. Use it so your module targets the same things the built-ins
-do.
+`targets()` returns the live **Targets** module. It holds the user's shared
+target settings (entity kinds, anti-bot, team) that every combat module checks.
+Use it so your module targets the same things the built-ins do.
 
-| Member | Description |
-| --- | --- |
-| `isTarget(entity, attackIntent?)` | Whether `entity` is a valid target under the user's settings. Pass `attackIntent: false` to skip the team check (e.g. for highlighting). |
-| `notifyTarget(entity)` | Report that you attacked `entity` — it becomes the *active target* (drives TargetHud and the target events below). |
-| `isActiveTarget(entity)` | Whether `entity` is currently tracked as active in its session. |
+| Member | Type | Description |
+| --- | --- | --- |
+| `isTarget(entity, attackIntent?)` | `boolean` | Whether `entity` is a valid target under the user's settings. Pass `attackIntent: false` to skip the team check (e.g. for highlighting). |
+| `notifyTarget(entity)` | `void` | Report that you attacked `entity`. It becomes the *active target*, which drives TargetHud and the target events below. |
+| `isActiveTarget(entity)` | `boolean` | Whether `entity` is currently the active target in its session. |
 
-It is a regular module, so `getOption("Player")`, `options()` and
+It's a regular module, so `getOption("Player")`, `options()` and
 `subscribeOptions(...)` work on it too.
 
 Three [game events](/guides/events-and-packets#game-events) follow the active
-target lifecycle: `target_active`, `target_inactive`, and `target_killed`, each
-carrying the `EntityNetworkPlayer`:
+target: `target_active`, `target_inactive` and `target_killed`. Each passes the
+`EntityNetworkPlayer`:
 
 ```ts
 ctx.on("target_active", (entity) => console.log("fighting", entity.username));
@@ -51,9 +50,9 @@ ctx.on("target_active", (entity) => console.log("fighting", entity.username));
 
 ## Target scanning
 
-The `target` schema node embeds the host's `TargetConfigurable` — the
-range / wall range / scan range / hurt time / priority drawer every combat
-module has. The node's fields decide which sub-options exist at all:
+The `target` schema node adds the host's `TargetConfigurable`: the drawer with
+range, wall range, scan range, hurt time and priority that every combat module
+has. The fields you set on the node decide which sub-options appear:
 
 ```ts
 target: { type: "target", range: 3, maxRange: 10, wallRange: 2, scanExtraRange: 3, hurtTime: true },
@@ -61,36 +60,38 @@ target: { type: "target", range: 3, maxRange: 10, wallRange: 2, scanExtraRange: 
 
 | Field | Meaning |
 | --- | --- |
-| `range` | Initial attack range. |
-| `maxRange` | Upper bound of the range sliders. |
-| `wallRange?` | Show the "Wall Range" option (line-of-sight check beyond it), starting at this value. |
-| `scanExtraRange?` | Show the "Scan Extra Range" option with this upper bound — extra band of *seen but not attacked* targets. |
+| `range` | Starting attack range. |
+| `maxRange` | Maximum value of the range sliders. |
+| `wallRange?` | Show the "Wall Range" option, starting at this value. Beyond this range, targets need line of sight. |
+| `scanExtraRange?` | Show the "Scan Extra Range" option, with this as its maximum. This is an extra band of targets that are *seen but not attacked*. |
 | `hurtTime?` | Show the "Hurt Time" filter. |
 
 The handle is the `TargetConfigurable` itself. Its main method scans the
-session, filtered through the [Targets module](#the-targets-module) and sorted
+session, filters through the [Targets module](#the-targets-module), and sorts
 by the configured priority:
 
 ```ts
 const found = ctx.options.target.getTargets(targets(), ctx.session);
-// TargetInfo[]: { entity, isScanExtra } — isScanExtra = in the extra band, don't attack
+// TargetInfo[]: { entity, isScanExtra }. isScanExtra means "in the extra band, don't attack".
 const best = found.find((t) => !t.isScanExtra);
 ```
 
-The individual options are exposed as handles too — `range`, `wallRange`,
-`scanExtraRange`, `hurtTime` (each `Option<number>`, the optional ones
-`undefined` when not enabled) and the `priority` value (a `TargetPriority`:
-`Distance`, `Health`, `Direction`, `Age`, `Hurt Time`).
+Each option is also available as a handle:
+
+- `range`, `wallRange`, `scanExtraRange`, `hurtTime`: each an `Option<number>`.
+  The optional ones are `undefined` when not enabled.
+- `priority`: a `TargetPriority` (`Distance`, `Health`, `Direction`, `Age`,
+  `Hurt Time`).
 
 ## Clicker
 
-The `click-scheduler` node embeds the host's CPS clicker — a drawer with a CPS
-range and a technique selector (`Stabilized`, `Randomized`, `Double Tap`,
-`Gaussian Distribution` — the same humanized timing engines the built-in
-modules use).
+The `click-scheduler` node adds the host's CPS clicker: a drawer with a CPS
+range and a technique selector. The techniques (`Stabilized`, `Randomized`,
+`Double Tap`, `Gaussian Distribution`) are the same humanized timing engines the
+built-in modules use.
 
-The handle is a `ClickSchedulerConfigurable`. Start a scheduler on enable,
-dispose it on disable:
+The handle is a `ClickSchedulerConfigurable`. Start a scheduler when the module
+is enabled and dispose of it when disabled:
 
 ```ts
 {
@@ -109,21 +110,21 @@ dispose it on disable:
 }
 ```
 
-The callback fires once per (humanized) click for as long as the scheduler
-lives. The configured values are readable as `ctx.options.click.cps`
-(a `NumberRange`) and `ctx.options.click.technique` (a `ClickTechnique`) —
-note a running scheduler samples its settings at creation, so recreate it if
-you want changes applied mid-session.
+The callback runs once per (humanized) click for as long as the scheduler
+exists. You can read the configured values as `ctx.options.click.cps` (a
+`NumberRange`) and `ctx.options.click.technique` (a `ClickTechnique`).
+
+A running scheduler reads its settings once, when it's created. To apply changes
+mid-session, create a new one.
 
 ## Rotation
 
-The `rotation` node embeds the host's rotation strategy selector —
-`None` / `Simple` / `Smart` (default `Smart`, which respects FOV settings and
-picks server-legal rotations).
+The `rotation` node adds the host's rotation strategy selector: `None`,
+`Simple` or `Smart`. The default is `Smart`, which respects FOV settings and
+picks rotations the server will accept.
 
-The handle asks the *selected* strategy for a decision toward a
-`RotationFace` — a pitch/yaw region, usually derived from the target's
-bounding box:
+The handle asks the *selected* strategy what to do about a `RotationFace`, a
+pitch/yaw region usually built from the target's bounding box:
 
 ```ts
 import { face3DToRotationFace, utils } from "@protohax/userscript";
@@ -143,45 +144,53 @@ import { face3DToRotationFace, utils } from "@protohax/userscript";
     const decision = ctx.options.rotation.getRotation(ctx.session, face);
 
     if (decision.type === "rotate") {
-      // a new rotation is needed — decision.rotation is the (pitch, yaw) Vector2
+      // decision.rotation is the (pitch, yaw) Vector2 to aim at
       player().rotationScheduler.request(decision.rotation, utils.SchedulerPriority.High, ctx, 200);
     } else if (decision.type === "cancel") {
-      // the face is already in view — release the override
+      // the face is already in view, so release the override
       player().rotationScheduler.cancel(ctx);
     }
-    // "keep": the current rotation still satisfies the face — leave it standing
+    // "keep": the current rotation still covers the face, so leave it
   });
 
   ctx.onDisable(() => player().rotationScheduler.cancel(ctx));
 }
 ```
 
-`ctx` is the requester identity here — it is the script-side equivalent of the
-`this` the built-in modules pass, and it is per module instance per session, so
-it scopes the request exactly right. Two things follow from that: one `ctx`
-holds one request, so a module wanting two *independent* concurrent rotations
-needs a second token (any object works — see
-[`rotationScheduler`](/api/local-player#rotationscheduler)); and a
-[mode](/guides/options#modes) setup receives its own `ctx`, so its requests are
-a separate owner — cancelling with the module-level `ctx` will not clear them.
+The decision is a `RotationType` union:
 
-The decision is a `RotationType` union: `{ type: "cancel" }` (already in the
-client's FOV), `{ type: "keep" }` (serverside FOV covers it), or
-`{ type: "rotate", rotation, face }`. Apply `rotate` decisions through
-[`rotationScheduler`](/api/local-player#rotationscheduler); `ctx.options.rotation.value`
-reads or sets the selected strategy by name.
+| Decision | Meaning |
+| --- | --- |
+| `{ type: "cancel" }` | The face is already in the client's FOV. |
+| `{ type: "keep" }` | The server-side FOV already covers it. |
+| `{ type: "rotate", rotation, face }` | A new rotation is needed. |
+
+Apply `rotate` decisions through
+[`rotationScheduler`](/api/local-player#rotationscheduler).
+`ctx.options.rotation.value` reads or sets the selected strategy by name.
+
+Here, `ctx` is the requester identity. It's the script equivalent of the `this`
+the built-in modules pass, and it's unique per module instance per session, so
+it scopes the request correctly. Two things follow:
+
+- One `ctx` holds one request. If your module needs two *independent* rotations
+  at the same time, use a second token. Any object works (see
+  [`rotationScheduler`](/api/local-player#rotationscheduler)).
+- A [mode](/guides/options#modes) setup gets its own `ctx`, so its requests
+  have a separate owner. Cancelling with the module-level `ctx` won't clear
+  them.
 
 ## Raw nodes — the escape hatch
 
-For host configurables without a curated node, the `raw` node embeds a
-pre-constructed object as-is, and the handle preserves its exact type:
+For host configurables that don't have their own node, the `raw` node adds a
+pre-built object as-is. The handle keeps its exact type:
 
 ```ts
 {
   // a Configurable, shown as a drawer named after the key (or `name`)
   extraTarget: { type: "raw", configurable: new TargetConfigurable({ range: 6, maxRange: 12 }) },
 
-  // an Option instance, added verbatim (its own display name is used)
+  // an Option instance, added as-is under its own display name
   something: { type: "raw", option: someFreshlyConstructedOption },
 },
 (ctx) => {
@@ -189,8 +198,14 @@ pre-constructed object as-is, and the handle preserves its exact type:
 }
 ```
 
-The constructible classes exported for this today: `TargetConfigurable`,
+The classes you can construct for this today are `TargetConfigurable`,
 `ClickSchedulerConfigurable`, and the rotation strategies
-(`RotationNoneConfigurable` / `RotationSimpleConfigurable` /
-`RotationSmartConfigurable`). The object must be **freshly constructed** — do
-not embed options that already belong to another module.
+(`RotationNoneConfigurable`, `RotationSimpleConfigurable`,
+`RotationSmartConfigurable`).
+
+:::caution
+
+The object must be **newly constructed**. Don't embed options that already
+belong to another module.
+
+:::

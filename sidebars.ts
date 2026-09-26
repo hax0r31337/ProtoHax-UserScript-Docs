@@ -1,6 +1,6 @@
 import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
-// Explicit sidebar so the ordering reads as a learning path, then a reference.
+// Explicit order: guides first as a learning path, then the API reference.
 const sidebars: SidebarsConfig = {
   docsSidebar: [
     'intro',
@@ -44,11 +44,13 @@ const sidebars: SidebarsConfig = {
         'api/entities',
         'api/local-player',
         'api/movement',
+        'api/input',
         'api/world',
         'api/inventory',
         'api/packets',
         'api/module-manager',
         'api/combat-helpers',
+        'api/audio',
         'api/utilities',
       ],
     },

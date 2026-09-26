@@ -7,9 +7,9 @@ title: Structure & Sharing
 
 ## One entry, any number of modules
 
-A module is registered by evaluating a
-[`defineModule`](/guides/getting-started) call, so a script can declare as many
-as it likes — in the entry file itself, or in files the entry imports:
+A module is registered when a [`defineModule`](/guides/getting-started) call
+runs. So one script can declare as many modules as you like, either in the
+entry file or in files the entry imports:
 
 ```ts
 // src/index.ts
@@ -26,40 +26,43 @@ defineModule(
 );
 ```
 
-Splitting across files is a matter of taste — the bundler inlines everything the
-entry reaches either way. If a file only registers a module and exports nothing,
+How you split files is up to you. The bundler inlines everything the entry
+reaches either way. If a file only registers a module and exports nothing,
 import it for its side effect:
 
 ```ts
 import "./modules/auto-sprint";
 ```
 
-What you should *not* do is add a second bundler entry point: that produces a
-second output file.
+:::warning
+
+Don't add a second bundler entry point. That produces a second output file.
+
+:::
 
 ## Importing another script
 
-A `phaxuser:` import reaches a *different* file in the client's scripts folder,
-resolved at load time the same way `@protohax/userscript` is. The path is
-relative to that folder:
+A `phaxuser:` import reaches a *different* file in the client's scripts folder.
+It's resolved at load time, just like `@protohax/userscript`. The path is
+relative to the scripts folder:
 
 ```ts
-// <scripts>/lib/math.js  ->
+// <scripts>/lib/math.js
 import { clamp } from "phaxuser:lib/math.js";
 
-// <scripts>/shared.js  ->
+// <scripts>/shared.js
 import shared from "phaxuser:shared.js";
 ```
 
-Use it for code you want to **share between scripts** — a helper library, a
-common config — rather than for splitting one script across files. Everything
-inside your own `src/` should be a normal relative import so it gets bundled;
-`phaxuser:` is for reaching things that ship as their own file.
+Use it to **share code between scripts**, like a helper library or a common
+config. Don't use it to split one script across files. Anything inside your own
+`src/` should be a normal relative import so it gets bundled; `phaxuser:` is for
+things that ship as their own file.
 
-Two consequences for the build:
+This affects your build in two ways.
 
-**Keep the specifier external.** Like the facade, it must survive into the
-output — bundle it and there is nothing left to resolve:
+**Keep the specifier external.** Like the facade, it has to survive into the
+output. If it gets bundled, there's nothing left to resolve at load time:
 
 ```js
 // rollup.config.mjs
@@ -74,8 +77,8 @@ shorthand ambient declaration types every such import as `any`:
 declare module "phaxuser:*";
 ```
 
-For a library you control, declare its shape too — the specific declaration wins
-over the wildcard, and you get real type checking back:
+For a library you control, declare its shape too. The specific declaration wins
+over the wildcard, so you get real type checking back:
 
 ```ts
 declare module "phaxuser:lib/math.js" {
@@ -83,5 +86,6 @@ declare module "phaxuser:lib/math.js" {
 }
 ```
 
-The target script exports what any ES module does; make sure the file you are
-importing actually ships to the scripts folder alongside the one importing it.
+The target script exports things like any other ES module. Just make sure the
+file you import actually ships to the scripts folder alongside the script that
+imports it.

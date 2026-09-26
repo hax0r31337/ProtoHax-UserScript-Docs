@@ -5,18 +5,20 @@ title: Bundling
 
 # Bundling
 
-> Using the [template](/guides/project-setup)? All of this is already
-> configured — read on only if you want to know *why*, or to set a project up
-> by hand.
+:::tip
+
+Using the [template](/guides/project-setup)? This is all set up already. Read on
+if you want to know *why*, or want to set up a project by hand.
+
+:::
 
 ## What the output must look like
 
-Whatever tooling you use, the built file has to satisfy two rules.
+Whatever tooling you use, the built file has to follow two rules:
 
-**1. It is an ES module.** The client loads it as ESM.
-
-**2. `@protohax/userscript` stays external.** The import must survive into the
-output *unbundled*:
+1. **It's an ES module.** The client loads it as ESM.
+2. **`@protohax/userscript` stays external.** The import must survive into the
+   output unbundled:
 
 ```js
 // dist/my-script.js
@@ -25,18 +27,18 @@ import { defineModule } from "@protohax/userscript";
 defineModule({ name: "AutoSprint" }, /* ... */);
 ```
 
-The client resolves that bare specifier at load time to its own **live
-singletons** — the same module manager, game state, and patched
-`prismarine-nbt` the built-in modules use. This is why the package is
-types-only: there is no runtime code to bundle, and inlining a stub would hand
-your script a second, disconnected copy of the world.
+At load time, the client resolves that bare import to its own **live
+singletons**: the same module manager, game state, and patched `prismarine-nbt`
+the built-in modules use. That's why the package is types-only. There's no
+runtime code to bundle, and inlining a stub would give your script a second,
+disconnected copy of the world.
 
-Everything *else* — your own files, any pure-JavaScript npm package you depend
-on — is inlined, so the result is self-contained apart from that one import.
+Everything else (your own files, and any pure-JavaScript npm packages you use)
+gets inlined. The result is self-contained apart from that one import.
 
 ## Setting it up by hand
 
-If you would rather build the project yourself:
+If you'd rather set up the build yourself, install the tools:
 
 ```bash
 npm init -y
@@ -45,7 +47,7 @@ npm install --save-dev @protohax/userscript typescript \
   @rollup/plugin-node-resolve @rollup/plugin-commonjs
 ```
 
-`package.json` — note `"type": "module"`:
+In `package.json`, note `"type": "module"`:
 
 ```json
 {
@@ -76,14 +78,14 @@ npm install --save-dev @protohax/userscript typescript \
 }
 ```
 
-> **`skipLibCheck` is required.** The published declarations vendor the host's
-> packet definitions verbatim, which contain a harmless duplicate declaration.
-> Your own code is still fully type-checked.
->
-> `isolatedModules` / `verbatimModuleSyntax` match how swc transpiles —
-> file-by-file, with type-only imports written as `import type`.
+- **Keep `skipLibCheck` on.** Versions before 0.5 need it, because their
+  declarations include a harmless duplicate declaration from the host's packet
+  definitions. From 0.5 on it's optional but still recommended. Your own code
+  is fully type-checked either way.
+- **`isolatedModules` and `verbatimModuleSyntax`** match how swc transpiles:
+  one file at a time, with type-only imports written as `import type`.
 
-`rollup.config.mjs` — the bundle itself:
+`rollup.config.mjs` builds the bundle:
 
 ```js
 import swc from "@rollup/plugin-swc";
@@ -96,15 +98,14 @@ export default {
     file: "dist/my-script.js",
     format: "es",
     sourcemap: "inline",
-    // A userscript is one file by definition.
+    // A userscript is always a single file.
     inlineDynamicImports: true,
   },
-  // The one rule that matters — see above.
+  // Must stay external (see above).
   external: ["@protohax/userscript"],
   plugins: [
     resolve({
-      // Extensionless imports (`./modules/auto-sprint`) have to be told to
-      // resolve to .ts.
+      // Lets extensionless imports (`./modules/auto-sprint`) resolve to .ts.
       extensions: [".ts", ".mjs", ".js", ".json"],
       // The host is neither Node nor a browser: no builtins, no shims.
       browser: false,
@@ -116,22 +117,22 @@ export default {
 };
 ```
 
+Then build:
+
 ```bash
 npx rollup -c
 ```
 
-Any other bundler works too, as long as the facade is marked external and the
-output is a single ES module.
+Any other bundler works too, as long as the facade (`@protohax/userscript`) is
+external and the output is a single ES module.
 
 ## Types are not checked by the bundler
 
-swc strips types without checking them: a build that succeeds says nothing
-about whether your code type-checks. Run `npm run check` (`tsc --noEmit`), or
-keep an editor with a TypeScript server open, and treat the bundle as the last
-step rather than the safety net.
+swc strips types without checking them, so a successful build tells you nothing
+about type errors. Run `npm run check` (`tsc --noEmit`) or keep an editor with a
+TypeScript server open. Treat the bundle as the last step, not the safety net.
 
 ## Next
 
-Optionally, prepend a
-**[metadata banner](/guides/project-setup/banner)** so the built file carries
-its own name and version.
+Optionally, add a [metadata banner](/guides/project-setup/banner) so the built
+file carries its own name and version.

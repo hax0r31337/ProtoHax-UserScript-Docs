@@ -6,7 +6,8 @@ sidebar_position: 2
 
 # Entities
 
-`session.entityState` is an **`EntityStateTracker`** — the live entity model.
+`session.entityState` is an `EntityStateTracker`: the live model of every entity
+the client knows about, plus the player list.
 
 ## `EntityStateTracker`
 
@@ -14,7 +15,7 @@ sidebar_position: 2
 | --- | --- | --- |
 | `entities` | `Map<bigint, AbstractEntity>` | All tracked entities, keyed by runtime id. |
 | `playerList` | `Map<string, PlayerListEntry>` | The player (tab) list, keyed by UUID string. |
-| `localPlayer` | [`EntityLocalPlayer`](/api/local-player) | The local player. |
+| `localPlayer` | [`EntityLocalPlayer`](/api/local-player) | You. |
 
 ```ts
 ctx.on("tick", () => {
@@ -26,8 +27,8 @@ ctx.on("tick", () => {
 
 ## The entity hierarchy
 
-Every value in `entities` is an `AbstractEntity`. The concrete subclasses are
-**value exports**, so you narrow with `instanceof`:
+Every value in `entities` is an `AbstractEntity`. The subclasses are value
+exports, so you can narrow with `instanceof`:
 
 ```
 AbstractEntity
@@ -52,7 +53,7 @@ for (const e of ctx.session.entityState.entities.values()) {
 
 ## `AbstractEntity`
 
-The base every entity shares.
+The members every entity has.
 
 | Member | Type | Description |
 | --- | --- | --- |
@@ -62,23 +63,23 @@ The base every entity shares.
 | `motion` | `Vector3` | Current velocity. |
 | `rotation` | `Vector3` | Rotation as `(pitch, yaw, headYaw)`. |
 | `isOnGround` | `boolean` | Whether the entity is on the ground. |
-| `aabb` | `AABB` | World-space bounding box. |
-| `get aabbShape` | `AABB` | Untranslated box (translate by `position` for world-space). |
-| `tickLived` | `bigint` | Ticks the entity has existed. |
+| `aabb` | `AABB` | Bounding box in world space. |
+| `get aabbShape` | `AABB` | Bounding box before translation. Add `position` to get world space. |
+| `tickLived` | `bigint` | How many ticks the entity has existed. |
 | `health` | `number` | Current health. |
 | `maxHealth` | `number` | Maximum health. |
 | `absorption` | `number` | Absorption (yellow) health. |
 | `scale` | `number` | Model scale. |
 | `effects` | `Map<string, MobEffect>` | Active status effects, keyed by handle (e.g. `minecraft:invisibility`). |
-| `hurtTime` | `number` | Remaining hurt-animation ticks. |
+| `hurtTime` | `number` | Ticks left in the hurt animation. |
 | `get canBeAttacked` | `boolean` | Whether this is a valid attack target. |
 | `get name` | `string` | Display name. |
-| `entityEvents` | `EventEmitter<EntityEvents>` | Per-entity event emitter (see below). |
+| `entityEvents` | `EventEmitter<EntityEvents>` | This entity's own event emitter ([see below](#per-entity-events--entityevents)). |
 | `getMetadata<T>(key)` | `T \| undefined` | Read a raw metadata value by key. |
 
 ### `EntityPlayer` (adds)
 
-Base of both other players and the local player.
+The base class for both other players and the local player.
 
 | Member | Type | Description |
 | --- | --- | --- |
@@ -86,22 +87,22 @@ Base of both other players and the local player.
 | `username` | `string` | Player name. |
 | `gamemode` | `GameMode` | Current game mode. |
 | `permissionLevel` | `PermissionLevel` | Permission level. |
-| `get playerListEntry` | `PlayerListEntry \| undefined` | This player's tab-list entry, if present. |
-| `get eyePosition` | `Vector3` | Eye position (accounts for sneak/swim/crawl). |
+| `get playerListEntry` | `PlayerListEntry \| undefined` | This player's tab-list entry, if there is one. |
+| `get eyePosition` | `Vector3` | Eye position. Accounts for sneaking, swimming and crawling. |
 | `get nameColor` | `string \| null` | Chat/team color code parsed from the name, if any. |
 | `get armorColor` | `Color \| undefined` | Team armor color, if any. |
 
-`EntityNetworkPlayer` is `EntityPlayer` with no additional members — it's the
-type of *other* players in the world.
+`EntityNetworkPlayer` adds nothing to `EntityPlayer`. It is simply the type of
+*other* players in the world.
 
 ### `EntityCreature` (adds)
 
 | Member | Type | Description |
 | --- | --- | --- |
 | `identifier` | `string` | Normalized entity identifier, e.g. `minecraft:zombie`. |
-| `isLiving` | `boolean` | Whether this is a living entity (mob). |
+| `isLiving` | `boolean` | Whether this is a living entity (a mob). |
 | `isHostile` | `boolean` | Whether this is a hostile mob. |
-| `isPickable` | `boolean` | Whether this entity can be picked/attacked. |
+| `isPickable` | `boolean` | Whether this entity can be picked or attacked. |
 | `isCustom` | `boolean` | Whether this is a non-vanilla (custom) entity. |
 
 ### `EntityItem` (adds)
@@ -112,7 +113,7 @@ type of *other* players in the world.
 
 ## Per-entity events — `entityEvents`
 
-Each entity has its own `EventEmitter` for changes to *that* entity:
+Each entity has its own `EventEmitter` that fires when *that* entity changes:
 
 ```ts
 ctx.on("entity_spawn", (entity) => {
@@ -126,19 +127,20 @@ The `EntityEvents` map:
 
 | Event | Payload | Fires when |
 | --- | --- | --- |
-| `move` | `()` | Position/rotation changed. |
+| `move` | `()` | Position or rotation changed. |
 | `health` | `()` | Health changed. |
-| `hurt` | `()` | Entity took damage. |
-| `destroy` | `()` | Entity was removed. |
+| `hurt` | `()` | The entity took damage. |
+| `destroy` | `()` | The entity was removed. |
 | `name` | `()` | Display name changed. |
 | `attribute` | `(key: string)` | An attribute updated. |
 | `effect` | `("add" \| "remove" \| "update", key)` | A status effect changed. |
-| `inventory_update` | `()` | Inventory changed (**does not fire for the local player**). |
+| `inventory_update` | `()` | The inventory changed. **Does not fire for the local player.** |
 | `metadata_<key>` | `(value)` | A specific metadata field changed. |
 
 ## `PlayerListEntry`
 
-The tab-list entry — present even for players not currently spawned as entities.
+A tab-list entry. It exists even for players who aren't currently spawned as
+entities.
 
 | Member | Type |
 | --- | --- |
@@ -150,25 +152,25 @@ The tab-list entry — present even for players not currently spawned as entitie
 
 ### `UUID`
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
-| `bytes` | `Uint8Array` | Raw 16 bytes. |
+| `bytes` | `Uint8Array` | The raw 16 bytes. |
 | `equals(other)` | `boolean` | Compare two UUIDs. |
 | `toString()` | `string` | Canonical string form. |
-| `UUID.parse(str)` | `static UUID` | Parse from string. |
+| `UUID.parse(str)` | `static UUID` | Parse from a string. |
 | `UUID.ZERO` | `static UUID` | The all-zero UUID. |
 
 ### `PlayerSkin`
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
-| `get hasVisibleGeometry` | `boolean` | Skin has any visible geometry. |
-| `get hasValidGeometry` | `boolean` | Skin has valid humanoid geometry. |
-| `extractAvatar()` | `Uint8Array \| undefined` | Face/avatar as raw RGBA pixels, if derivable. |
+| `get hasVisibleGeometry` | `boolean` | Whether the skin has any visible geometry. |
+| `get hasValidGeometry` | `boolean` | Whether the skin has valid humanoid geometry. |
+| `extractAvatar()` | `Uint8Array \| undefined` | The face/avatar as raw RGBA pixels, if it can be derived. |
 
 ## `GameMode` and `PermissionLevel`
 
-These are **string-union types**, not enums — compare against the string:
+These are string-union types, not enums. Compare against the string:
 
 ```ts
 type GameMode =

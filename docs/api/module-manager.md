@@ -6,26 +6,26 @@ sidebar_position: 8
 
 # Module Manager
 
-`moduleManager` is the live registry of every module — built-in and scripted. It
-is a top-level export (the same singleton the client uses), so you can inspect
-other modules and observe their state from your script.
+`moduleManager` is the live registry of every module, both built-in and
+scripted. It's a top-level export and the same object the client itself uses, so
+your script can inspect other modules and watch their state.
 
 ```ts
 import { moduleManager } from "@protohax/userscript";
 ```
 
-You normally don't touch it for your *own* module (you read options directly and
-use `ctx`). Reach for it when a module needs to **coordinate with another
-module** — read its enabled state or options, or react to it changing.
+You don't need it for your *own* module: read your options directly and use
+`ctx`. Use it when your module needs to **work with another module**, e.g. read
+its enabled state or options, or react when they change.
 
 ## `ModuleManager`
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
 | `getModule(id)` | `ModuleDefinition \| undefined` | Look up a live module instance by id. |
-| `getModules()` | `MapIterator<ModuleDefinition>` | Iterate all live module instances. |
-| `listenChanges(id, callback)` | `() => void` | Run `callback` whenever module `id` spawns or one of its options changes. Returns an unsubscribe fn. |
-| `events` | `EventEmitter<ModuleEvents>` | Lifecycle/configuration events. |
+| `getModules()` | `MapIterator<ModuleDefinition>` | Iterate over all live module instances. |
+| `listenChanges(id, callback)` | `() => void` | Call `callback` whenever module `id` spawns or one of its options changes. Returns an unsubscribe function. |
+| `events` | `EventEmitter<ModuleEvents>` | Lifecycle and configuration events. |
 
 ### `ModuleEvents`
 
@@ -38,26 +38,26 @@ module** — read its enabled state or options, or react to it changing.
 
 ## `ModuleDefinition`
 
-What `getModule` / `getModules` hand back:
+What `getModule` and `getModules` return:
 
 | Member | Type | Description |
 | --- | --- | --- |
-| `id` | `string` | Unique id. A built-in's primary instance is its name; a script module's is [`script:<name>`](/guides/modules#module-ids). |
-| `alias` | `string` | User-assigned display alias. |
+| `id` | `string` | Unique id. For a built-in's primary instance, this is its name. For a script module, it's [`script:<name>`](/guides/modules#module-ids). |
+| `alias` | `string` | Display alias set by the user. |
 | `triggerMode` | `ModuleTriggerMode` | `Toggle` or `WhileHeld`. |
-| `state` | `Option<boolean>` | Enabled state as an option — read/set `.value`, `.subscribe` to observe. |
-| `get moduleInfo` | `ModuleInfo` | Static identity: `{ name, category, mode }`. `category` is a [`ModuleCategory`](/guides/modules#the-script-category) — always `Script` for modules registered by a userscript. |
-| `get isPrimary` | `boolean` | Whether this is the instance spawned at registration — the one the user cannot remove. `false` for clones of an `Atomic` module. |
-| `options()` | `MapIterator<Option<any>>` | Iterate the module's options. |
+| `state` | `Option<boolean>` | Enabled state, as an option. Read or set `.value`; use `.subscribe` to watch it. |
+| `get moduleInfo` | `ModuleInfo` | Static identity: `{ name, category, mode }`. `category` is a [`ModuleCategory`](/guides/modules#the-script-category), and is always `Script` for modules registered by a userscript. |
+| `get isPrimary` | `boolean` | Whether this is the instance created at registration, which the user can't remove. `false` for clones of an `Atomic` module. |
+| `options()` | `MapIterator<Option<any>>` | Iterate over the module's options. |
 | `getOption(name)` | `Option<any> \| undefined` | Look up one option by its display name (as shown in the menu). |
-| `subscribeOptions(callback)` | `() => void` | Observe every option in the module's tree, nested children and enum values included; `callback` receives `(option, path)`. Returns an unsubscribe fn. |
+| `subscribeOptions(callback)` | `() => void` | Watch every option in the module's tree, including nested children and enum values. `callback` receives `(option, path)`. Returns an unsubscribe function. |
 
 ```ts
 import { moduleManager } from "@protohax/userscript";
 
 // is the built-in "Kill Aura" module enabled right now?
-// (a built-in's id is its display name, spaces and all — your own modules
-//  are namespaced, e.g. "script:My Module")
+// Built-in ids are display names, spaces included; script modules are
+// namespaced, e.g. "script:My Module".
 const killaura = moduleManager.getModule("Kill Aura");
 if (killaura?.state.value) {
   // ...
@@ -71,11 +71,11 @@ const unsubscribe = moduleManager.listenChanges("Kill Aura", () => {
 
 ### Reading and writing a module's options
 
-Each module hands back its options through `getOption(name)` (by the display name
-shown in the menu) and `options()` (iterate them all). The returned
-[`Option<T>`](/guides/options#reading--observing--optiont) works exactly like your
-own — read `.value`, set `.value` (as if the user edited the menu), or
-`.subscribe(...)` to observe.
+Use `getOption(name)` to get one option by its menu display name, or `options()`
+to iterate over all of them. Each returned
+[`Option<T>`](/guides/options#reading--observing--optiont) works just like your
+own: read `.value`, set `.value` (as if the user changed it in the menu), or call
+`.subscribe(...)` to watch it.
 
 ```ts
 import { moduleManager } from "@protohax/userscript";
@@ -95,22 +95,26 @@ for (const opt of killaura?.options() ?? []) {
 }
 ```
 
-> **Note — untyped values.** `getOption`/`options` return `Option<any>` (the
-> module's options aren't known at compile time), so `.value` is `any`. Cast or
-> check at the call site if you need a specific type.
+:::note[Values are untyped]
+
+`getOption` and `options` return `Option<any>`, because another module's options
+aren't known at compile time. That makes `.value` an `any`. Cast or check it
+where you use it if you need a specific type.
+
+:::
 
 ### Nested options
 
-Options can carry whole subtrees — nested `child` options, drawers, and mode
-configurables. Two members on `Option` open them up:
+An option can hold a whole subtree: nested `child` options, drawers, and mode
+configurables. Two members on `Option` let you reach them:
 
 | Member | Type | Description |
 | --- | --- | --- |
-| `child` | `Configurable \| undefined` | The option's nested configurable. For an enum/mode selector this tracks the **selected** value's configurable. |
-| `getConfigurableValues()` | `Configurable[]` | Every child configurable reachable from the option — for a selector, one per choice. |
+| `child` | `Configurable \| undefined` | The option's nested configurable. For an enum or mode selector, this follows the **selected** value's configurable. |
+| `getConfigurableValues()` | `Configurable[]` | Every child configurable the option can reach. For a selector, one per choice. |
 
-Each `Configurable` again has `options()`, `getOption(name)`, and
-`subscribeOptions(...)`, so you can walk (or observe) a tree by display names:
+Each `Configurable` also has `options()`, `getOption(name)` and
+`subscribeOptions(...)`, so you can walk or watch a whole tree by display name:
 
 ```ts
 const velocity = moduleManager.getModule("Velocity");
@@ -126,10 +130,10 @@ const unsub = velocity?.subscribeOptions((option, path) => {
 });
 ```
 
-For your **own** module none of this is needed — the schema hands you typed
-handles for the whole tree (see [Options](/guides/options)).
+You don't need any of this for your **own** module. The schema already gives you
+typed handles for the whole tree (see [Options](/guides/options)).
 
-`ModuleTriggerMode`:
+### `ModuleTriggerMode`
 
 ```ts
 enum ModuleTriggerMode {

@@ -6,39 +6,39 @@ sidebar_position: 6
 
 # Items & Inventory
 
-`session.itemState` is an **`ItemStateTracker`** — the local inventories, open
-containers and forms, the item registry, and the controller that moves/drops
-items.
+`session.itemState` is an `ItemStateTracker`. It holds your inventories, any
+open container or form, and the item registry. It also owns the controller you
+use to move and drop items.
 
 ## `ItemStateTracker`
 
 | Member | Type | Description |
 | --- | --- | --- |
-| `controller` | `AbstractInventoryController` | Moves/drops/consumes items (see below). |
-| `openContainer` | `AbstractDynamicInventory \| null` | The currently open container/inventory, if any. |
-| `openForm` | `Form \| null` | The currently open modal form, if any. |
+| `controller` | `AbstractInventoryController` | Moves, drops and consumes items ([below](#abstractinventorycontroller)). |
+| `openContainer` | `AbstractDynamicInventory \| null` | The open container or inventory, if any. |
+| `openForm` | `Form \| null` | The open modal form, if any. |
 | `items` | `Map<number, ItemDefinition>` | Item registry, keyed by network runtime id. |
 | `itemsByName` | `Map<string, ItemDefinition>` | Item registry, keyed by identifier (e.g. `minecraft:diamond_sword`). |
-| `simulateOpenInventory()` | `void` | Silently open the player inventory server-side (no-op if already open). |
-| `closeContainer()` | `void` | Close the currently open container. |
+| `simulateOpenInventory()` | `void` | Quietly open the player inventory on the server. Does nothing if it's already open. |
+| `closeContainer()` | `void` | Close the open container. |
 
 ## `AbstractInventoryController`
 
-`itemState.controller`. Every mutation goes through here — it produces the
-correct transaction packets for the current server-auth mode.
+`itemState.controller`. Every inventory change goes through here, and it sends
+the right transaction packets for the server's current auth mode.
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
-| `moveItem(from, fromSlot, to, toSlot)` | `void` | Move/merge/swap items between container slots. |
+| `moveItem(from, fromSlot, to, toSlot)` | `void` | Move, merge or swap items between container slots. |
 | `dropItem(container, slot, amount)` | `void` | Drop `amount` items from a slot. |
-| `dropItemStack(container, slot)` | `void` | Drop the entire stack in a slot (and swing). |
-| `consumeItem(container, slot, amount)` | `void` | Reduce a slot's stack by `amount` and resync the client. |
-| `isUsingItem` | `boolean` | Whether the player is currently using/charging an item. |
-| `itemInUseDuration` | `number` | Ticks the current item has been in use. |
+| `dropItemStack(container, slot)` | `void` | Drop the whole stack in a slot, and swing. |
+| `consumeItem(container, slot, amount)` | `void` | Remove `amount` from a slot's stack and resync the client. |
+| `isUsingItem` | `boolean` | Whether the player is using or charging an item. |
+| `itemInUseDuration` | `number` | How many ticks the current item has been in use. |
 
-The `from`/`to`/`container` arguments are `AbstractInventoryContainer`s — i.e.
-`localPlayer.inventory`, `.inventoryArmor`, `.inventoryOffhand`, or a currently
-open container.
+The `from`, `to` and `container` arguments are `AbstractInventoryContainer`s:
+`localPlayer.inventory`, `.inventoryArmor`, `.inventoryOffhand`, or an open
+container.
 
 ```ts
 const { entityState, itemState } = ctx.session;
@@ -64,15 +64,18 @@ AbstractInventory                         // content: (ItemStack | undefined)[]
 
 | Member | Type | Description |
 | --- | --- | --- |
-| `content` | `(ItemStack \| undefined)[]` | Backing slot array. **An empty slot is `undefined`.** |
+| `content` | `(ItemStack \| undefined)[]` | The slot array. **An empty slot is `undefined`.** |
 
-> **Note — there is no `isEmpty`.** A slot is empty exactly when
-> `content[slot] === undefined`. Check for that rather than looking for an
-> "air" item.
+:::note[There is no `isEmpty`]
+
+A slot is empty exactly when `content[slot] === undefined`. Check for that
+instead of looking for an "air" item.
+
+:::
 
 ### `AbstractInventoryContainer` (adds)
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
 | `id` | `WindowID` | Window id of this container. |
 | `type` | `WindowType` | Window type. |
@@ -80,75 +83,76 @@ AbstractInventory                         // content: (ItemStack | undefined)[]
 
 ### `PlayerInventory`
 
-`localPlayer.inventory` — the hotbar + main inventory.
+`localPlayer.inventory`: the hotbar plus the main inventory.
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
-| `selectedSlot` | `number` | Server-side selected hotbar slot (0–8). |
-| `clientSelectedSlot` | `number` | Client-side selected hotbar slot (0–8). |
+| `selectedSlot` | `number` | Selected hotbar slot on the server (0–8). |
+| `clientSelectedSlot` | `number` | Selected hotbar slot on the client (0–8). |
 | `get/set hand` | `ItemStack \| undefined` | The item in the held hotbar slot. |
-| `setHotbarSlot(slot, toClient?)` | `void` | Switch the held slot (optionally reflect to client). |
+| `setHotbarSlot(slot, toClient?)` | `void` | Switch the held slot. Optionally show the change on the client too. |
 | `sendMobEquipment(toClient?)` | `void` | Resend equipment for the current slot. |
 
 ### `PlayerInventoryArmor`
 
-`localPlayer.inventoryArmor` — four get/set accessors: `helmet`, `chestplate`,
-`leggings`, `boots` (each `ItemStack | undefined`).
+`localPlayer.inventoryArmor`. Has four get/set accessors: `helmet`,
+`chestplate`, `leggings` and `boots` (each `ItemStack | undefined`).
 
 ### `PlayerInventoryOffhand`
 
-`localPlayer.inventoryOffhand` — `get offhand` (`ItemStack | undefined`).
+`localPlayer.inventoryOffhand`. Has `get offhand` (`ItemStack | undefined`).
 
 ### `AbstractDynamicInventory`
 
-An opened container (e.g. a chest). This is the type of `itemState.openContainer`.
+An opened container, such as a chest. This is the type of
+`itemState.openContainer`.
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
 | `coordinates` | `Vector3` | World coordinates of the container block, if any. |
 | `created` | `Date` | When the container was opened. |
 | `get isInitialized` | `boolean` | Whether the container has been initialized. |
 | `initialize()` | `void` | Mark it initialized. |
-| `get isHidden` | `boolean` | Whether the container is currently hidden (silent). |
-| `canHide()` | `boolean` | Whether it can be silent/hidden. |
-| `hide()` | `void` | Hide (silence) the container; throws if it can't be. |
+| `get isHidden` | `boolean` | Whether the container is hidden (silent). |
+| `canHide()` | `boolean` | Whether it can be hidden (silent). |
+| `hide()` | `void` | Hide (silence) the container. Throws if it can't be hidden. |
 
 ## `ItemStack`
 
-An **immutable** item stack. There are no setters — you derive a new stack and
-reassign it (e.g. to `inventory.hand`).
+An **immutable** item stack. There are no setters: to change a stack, create a
+new one and assign it (e.g. to `inventory.hand`).
 
-| Member | Signature | Description |
+| Member | Type | Description |
 | --- | --- | --- |
 | `definition` | `ItemDefinition` | The item's static definition. |
-| `amount` | `number` | Stack size. **(Not `count`.)** |
+| `amount` | `number` | Stack size. **Not `count`.** |
 | `metadata` | `number` | Item metadata/damage value. |
-| `block` | `BlockState \| undefined` | Associated block state, for placeable items. |
+| `block` | `BlockState \| undefined` | Matching block state, for placeable items. |
 | `nbt` | `{ version, nbt } \| undefined` | Raw NBT payload, if any. |
-| `get simplifiedNbt` | `ItemNbt \| undefined` | Lazily-simplified item NBT. |
+| `get simplifiedNbt` | `ItemNbt \| undefined` | Item NBT, simplified on first access. |
 | `get nbtHash` | `number` | Hash of the item's NBT (0 if none). |
 | `get typeHash` | `number` | Identity hash for grouping "same" items. |
-| `get durability` | `number` | Current damage taken (from NBT). |
+| `get durability` | `number` | Damage taken so far (from NBT). |
 | `get customColor` | `Color \| undefined` | Custom (dyed) color, if set. |
 
-Derivations (return a **new** stack):
+These methods return a **new** stack:
 
 | Method | Returns | Description |
 | --- | --- | --- |
-| `reduceAmount(amount)` | `ItemStack \| undefined` | Fewer items (undefined if depleted). |
+| `reduceAmount(amount)` | `ItemStack \| undefined` | Fewer items. `undefined` if none are left. |
 | `addAmount(amount)` | `ItemStack` | More items. |
-| `withAmount(amount)` | `ItemStack \| undefined` | Exact amount (undefined if ≤ 0). |
-| `withDamage(damage)` | `ItemStack \| undefined` | Given damage (undefined if it would break). |
-| `withStackId(stackId)` | `ItemStack` | Given network stack id. |
+| `withAmount(amount)` | `ItemStack \| undefined` | An exact amount. `undefined` if ≤ 0. |
+| `withDamage(damage)` | `ItemStack \| undefined` | The given damage. `undefined` if the item would break. |
+| `withStackId(stackId)` | `ItemStack` | The given network stack id. |
 
-Queries:
+These methods answer questions about the stack:
 
 | Method | Returns | Description |
 | --- | --- | --- |
-| `canStackWith(other)` | `boolean` | Same type/metadata/nbt as `other`. |
+| `canStackWith(other)` | `boolean` | Whether it has the same type, metadata and NBT as `other`. |
 | `isCorrectTool(block)` | `boolean` | Whether this is the correct tool for `block`. |
-| `newDurability(block)` | `number` | Damage this would take from breaking `block`. |
-| `getDestroySpeed(block)` | `number` | Block-breaking speed against `block`. |
+| `newDurability(block)` | `number` | Damage this item would take from breaking `block`. |
+| `getDestroySpeed(block)` | `number` | Breaking speed against `block`. |
 
 ```ts
 const inv = ctx.session.entityState.localPlayer.inventory;
@@ -165,12 +169,12 @@ if (held) {
 | `runtimeId` | `number` | Network runtime id. |
 | `name` | `string` | Identifier, e.g. `minecraft:diamond_sword`. |
 | `tags` | `Set<string>` | Item tags. |
-| `durability` | `number` | Max damage before breaking. |
-| `maxStack` | `number` | Max stack size. |
+| `durability` | `number` | Maximum damage before breaking. |
+| `maxStack` | `number` | Maximum stack size. |
 
 ### `Form`
 
-`itemState.openForm` — an open modal form:
+`itemState.openForm`: an open modal form.
 
 | Member | Type |
 | --- | --- |

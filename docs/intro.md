@@ -7,52 +7,49 @@ sidebar_position: 1
 
 # ProtoHax UserScript
 
-**ProtoHax UserScript** lets you write your own ProtoHax client modules in
-TypeScript. A userscript declares a module — its name and options — and wires up
-listeners against the live game session: game events, packets, the entity/world
-model, the local player, inventory, and the raw packet connection.
+ProtoHax UserScript lets you write your own ProtoHax client modules in
+TypeScript. A userscript declares a module (its name and options) and hooks
+into the live game session: game events, packets, entities and the world, the
+local player, the inventory, and the raw packet connection.
 
-Modules you author this way appear in the client menu under the **Script**
-category, alongside the built-in ones. They can be toggled on and off, expose
-sliders and toggles and color pickers, and read or drive the game exactly like a
-first-party module.
+Your modules show up in the client menu under the **Script** category, next to
+the built-in ones. They work just like first-party modules: users can toggle
+them, tweak their sliders, toggles and color pickers, and they can read and
+drive the game the same way.
 
 ## The `@protohax/userscript` package
 
-Everything is typed through a single package on npm:
-
-> **[`@protohax/userscript`](https://www.npmjs.com/package/@protohax/userscript)**
+All the types come from one npm package:
+[`@protohax/userscript`](https://www.npmjs.com/package/@protohax/userscript).
 
 :::warning[0.x is unstable]
 
-The userscript API is at version **0.x**: it is still taking shape, and
-**breaking changes can land in any release** until 1.x is reached. Expect to
-update your scripts between client versions, and pin the package version your
-script was built against.
+The API is still at **0.x** and still taking shape. Any release can include
+breaking changes until 1.x. Expect to update your scripts between client
+versions, and pin the package version your script was built against.
 
 :::
 
-This package is **types-only**. It ships a single `index.d.ts` and no runtime
-code. That is deliberate:
+The package is **types-only**: a single `index.d.ts`, no runtime code. That's
+on purpose.
 
-- The **types** describe the authoring API and the host's own game model, so
-  your editor autocompletes `ctx.session.entityState.localPlayer.inventory` and
+- **Types** describe the authoring API and the host's game model. Your editor
+  autocompletes things like `ctx.session.entityState.localPlayer.inventory` and
   type-checks every packet payload.
-- The **values** you import from it — `defineModule`, `moduleManager`, the entity
-  classes, `AbstractBlockLocationTracker`, `nbt`, `utils` — are resolved at
-  runtime to the host's **live singletons** when your script is bundled into the
-  client. Your script and the client share one instance of the game state, one
-  module manager, and one (patched) `prismarine-nbt`.
+- **Values** you import (`defineModule`, `moduleManager`, the entity classes,
+  `AbstractBlockLocationTracker`, `nbt`, `utils`) are resolved at runtime to the
+  host's **live singletons** once your script is bundled into the client. Your
+  script and the client share one game state, one module manager, and one
+  (patched) `prismarine-nbt`.
 
-In other words: you install the package for the types, and the ProtoHax client
-supplies the implementation when your script runs.
+So you install the package for the types, and the client supplies the
+implementation when your script runs.
 
 ## Install
 
-Start from the
-**[template repository](https://github.com/hax0r31337/ProtoHax-UserScript-Template)** —
-it comes with the bundler, the deploy script, and a worked example module
-already wired up:
+The easiest start is the
+[template repository](https://github.com/hax0r31337/ProtoHax-UserScript-Template).
+It comes with the bundler, the deploy script, and a working example module:
 
 ```bash
 git clone https://github.com/hax0r31337/ProtoHax-UserScript-Template my-script
@@ -83,15 +80,19 @@ A minimal config that works with the published declarations:
 }
 ```
 
-> **Note — `skipLibCheck` is required.** The published `.d.ts` vendors the host's
-> packet definitions verbatim, which contain a harmless duplicate declaration.
-> `skipLibCheck: true` lets your project type-check cleanly while still fully
-> checking *your* code against the API.
+:::note[Keep `skipLibCheck` on]
 
-A script ships as a **single ES module** with `@protohax/userscript` left
-external — that import is what binds your script to the host's live singletons.
-[Project Setup](/guides/project-setup) covers the bundler configuration and
-where the built file goes.
+Versions before 0.5 need it: their `.d.ts` copies the host's packet definitions
+verbatim, including a harmless duplicate declaration. From 0.5 on the
+declarations type-check cleanly, but `skipLibCheck: true` is still
+recommended. Your own code is fully checked against the API either way.
+
+:::
+
+Your script ships as a **single ES module** with `@protohax/userscript` left
+external. That import is what connects your script to the host's live
+singletons. [Project Setup](/guides/project-setup) covers the bundler config
+and where the built file goes.
 
 ## A first module
 
@@ -104,8 +105,8 @@ defineModule(
     speed: { type: "number", def: 1, min: 0, max: 5, step: 0.1 },
   },
   (ctx) => {
-    // "movement_tick" is the game's own tick, fired from native before it
-    // moves — position and motion written on the state land in that tick.
+    // The game's own tick, fired from native before the player moves.
+    // Position and motion you write here apply in that same tick.
     ctx.on("movement_tick", (state) => {
       state.strafe(ctx.options.speed.value, 1);
     });
@@ -113,16 +114,17 @@ defineModule(
 );
 ```
 
-That is the whole shape of a module: **a schema declaring the options once, and
-a per-session setup function** that reads them from `ctx.options` and
-subscribes to events. The next pages walk through each layer.
+That's the whole shape of a module: a **schema** that declares the options
+once, and a **setup function** that runs per session, reads the options from
+`ctx.options`, and subscribes to events. The next pages go through each part.
 
 ## Where to go next
 
-- **[Project Setup](/guides/project-setup)** — the template, bundling, and installing your script.
-- **[Getting Started](/guides/getting-started)** — the module lifecycle in detail.
-- **[Modules](/guides/modules)** — metadata, the Script category, and toggling.
-- **[Options](/guides/options)** — sliders, toggles, enums, colors.
-- **[Events & Packets](/guides/events-and-packets)** — subscribing to the session.
-- **[Movement](/api/movement)** — `movement_tick`, `MovementState`, and sprint control.
-- **[API Reference](/api/session)** — the session, entities, world, inventory, and packets.
+- [Project Setup](/guides/project-setup): the template, bundling, and installing your script.
+- [Getting Started](/guides/getting-started): the module lifecycle in detail.
+- [Modules](/guides/modules): metadata, the Script category, and toggling.
+- [Options](/guides/options): sliders, toggles, enums, colors.
+- [Events & Packets](/guides/events-and-packets): subscribing to the session.
+- [Movement](/api/movement): `movement_tick`, `MovementState`, jumping, and sprint and sneak control.
+- [Input](/api/input): `input_tick`, `InputState`, and overriding the player's keys.
+- [API Reference](/api/session): the session, entities, world, inventory, and packets.

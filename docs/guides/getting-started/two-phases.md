@@ -5,9 +5,8 @@ title: The Two Phases
 
 # The Two Phases
 
-Authoring mirrors the host's own definition/instance split. There are two
-distinct phases, and understanding the boundary between them is the key to
-writing correct modules.
+A module has two phases, mirroring how the host itself splits definitions from
+instances. Knowing what runs in each one is the key to writing correct modules.
 
 ```ts
 defineModule(
@@ -15,15 +14,12 @@ defineModule(
 
   // ── Phase 1: the schema — interpreted ONCE at registration ──
   {
-    // Declares the options. These are shared by every session.
     enabled: { type: "boolean", name: "Feature", def: true },
   },
 
   // ── Phase 2: setup(ctx) — runs PER SESSION ──
   (ctx) => {
-    // Wire listeners against `ctx`. A fresh ctx is created for each
-    // session the module runs in; `ctx.options` carries the live option
-    // handles, typed from the schema.
+    // A fresh ctx for each session; ctx.options is shared and typed from the schema.
     ctx.on("tick", () => {
       if (ctx.options.enabled.value) doSomething(ctx);
     });
@@ -33,24 +29,30 @@ defineModule(
 
 ## Phase 1 — the schema
 
-Interpreted **once**, when the module is registered with the client. It
-**declares the options** the module exposes in the menu — including nested
-options, drawers, and [modes](/guides/options#modes) with per-mode behavior.
-Because declaration happens once, the option handles are shared across every
-session — reading `option.value` inside a listener always sees the current menu
+The schema is interpreted **once**, when the module registers with the client.
+It declares the options the module shows in the menu, including nested options,
+drawers, and [modes](/guides/options#modes) with their own behavior.
+
+Since this happens only once, every session shares the same option handles.
+Reading `option.value` inside a listener always gives you the current menu
 value.
 
 ## Phase 2 — `setup(ctx)`
 
-Runs **once per session** (a session is one connection to a server). It receives
-a fresh [`ModuleContext`](/guides/getting-started/context) — `ctx` — whose
-`session` is that session and whose `options` are the handles declared by the
-schema. Everything you subscribe through `ctx` is automatically **bound and
-torn down with the session**; you never unsubscribe by hand.
+Setup runs **once per session**. A session is one connection to a server.
+
+Each time, it gets a fresh [`ModuleContext`](/guides/getting-started/context),
+called `ctx`:
+
+- `ctx.session` is that session.
+- `ctx.options` holds the handles declared by the schema.
+
+Everything you subscribe through `ctx` is bound to the session and **torn down
+with it automatically**. You never unsubscribe by hand.
 
 ## The legacy builder
 
-Scripts written against the original two-argument form —
-`defineModule(meta, (options) => (ctx) => { ... })` — keep working. It is
-deprecated in favor of the schema; see
+Scripts written with the original two-argument form,
+`defineModule(meta, (options) => (ctx) => { ... })`, still work. It's
+deprecated in favor of the schema. See
 [Options → The legacy builder](/guides/options#the-legacy-builder).

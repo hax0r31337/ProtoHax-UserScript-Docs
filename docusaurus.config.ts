@@ -72,7 +72,7 @@ const config: Config = {
     [
       'docusaurus-plugin-copy-page-button',
       {
-        // emit a plain-markdown URL (/page.md) per doc, and point the AI links at it
+        // Serve each doc as plain markdown (/page.md) and point the AI links there.
         generateMarkdownRoutes: true,
         enabledActions: ['copy', 'view', 'chatgpt', 'claude'],
       },

@@ -5,9 +5,9 @@ title: Metadata Banner
 
 # Metadata Banner
 
-A built script gets copied around, renamed, and shared. A Tampermonkey-style
-metadata block at the top of the file is a cheap way to keep its identity
-attached to it:
+Built scripts get copied, renamed, and shared. A Tampermonkey-style metadata
+block at the top of the file is an easy way to keep its name and version
+attached:
 
 ```js
 // ==UserScript==
@@ -20,9 +20,9 @@ attached to it:
 import { defineModule } from "@protohax/userscript";
 ```
 
-It is **entirely optional** — the client neither requires nor interprets the
-block, it is just a comment — but it tells whoever ends up with the file what it
-is and which version they have.
+The banner is **entirely optional**. It's just a comment; the client doesn't
+require or read it. It simply tells whoever ends up with the file what it is
+and which version they have.
 
 ## Emitting it from rollup
 
@@ -41,17 +41,24 @@ output: {
 },
 ```
 
-If you minify, make sure the minifier keeps comments — terser drops them by
-default, which would strip the block back out:
+:::warning
+
+If you minify, make sure the minifier keeps comments. terser drops them by
+default, which strips the banner back out:
 
 ```js
 terser({ format: { comments: "all" } })
 ```
 
+:::
+
 ## In the template
 
-The template generates the banner from `package.json` — `name`, `version`,
-`description`, `author` — with extra fields configurable in
-`script.config.mjs`, and configures terser to keep all comments so the block
-survives minification. Bumping the version in `package.json` is enough to bump
-it in the built file.
+The template builds the banner for you:
+
+- It fills in `name`, `version`, `description`, and `author` from
+  `package.json`.
+- You can add extra fields in `script.config.mjs`.
+- terser is set to keep all comments, so the banner survives minification.
+
+To bump the version in the built file, just bump it in `package.json`.
