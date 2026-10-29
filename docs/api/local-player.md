@@ -34,7 +34,7 @@ local player. They live on the `MovementState` passed to the
 | `xuid` | `string` | Your XUID. |
 | `serverAddress` | `string` | Address of the connected server. |
 | `gameVersion` | `string` | Client game version string. |
-| `isInitialized` | `boolean` | Whether the local player has finished initializing. |
+| `isInitialized` | `boolean` | Whether the client has spawned in this world. Reset by each `start_game`, then set just before [`local_player_initialized`](/guides/events-and-packets#game-events) fires. |
 | `tick` | `bigint` | The player's current tick counter. |
 
 ## Movement state

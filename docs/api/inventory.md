@@ -29,7 +29,7 @@ the right transaction packets for the server's current auth mode.
 
 | Member | Type | Description |
 | --- | --- | --- |
-| `moveItem(from, fromSlot, to, toSlot)` | `void` | Move, merge or swap items between container slots. |
+| `moveItem(from, fromSlot, to, toSlot, amount?)` | `void` | Move, merge or swap items between container slots. `amount` moves at most that many, the whole stack by default. Part of a stack can't be swapped, so it does nothing onto a different item. |
 | `dropItem(container, slot, amount)` | `void` | Drop `amount` items from a slot. |
 | `dropItemStack(container, slot)` | `void` | Drop the whole stack in a slot, and swing. |
 | `consumeItem(container, slot, amount)` | `void` | Remove `amount` from a slot's stack and resync the client. |

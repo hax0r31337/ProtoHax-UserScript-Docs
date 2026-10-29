@@ -10,7 +10,8 @@ sidebar_position: 1
 ProtoHax UserScript lets you write your own ProtoHax client modules in
 TypeScript. A userscript declares a module (its name and options) and hooks
 into the live game session: game events, packets, entities and the world, the
-local player, the inventory, and the raw packet connection.
+local player, the inventory, and the raw packet connection. It can also draw
+its own UI on the client: HUD elements and full screens.
 
 Your modules show up in the client menu under the **Script** category, next to
 the built-in ones. They work just like first-party modules: users can toggle
@@ -44,6 +45,26 @@ on purpose.
 
 So you install the package for the types, and the client supplies the
 implementation when your script runs.
+
+:::warning[No ICU in the client's V8]
+
+The client's V8 is built with ICU disabled, so there's no internationalization
+support at runtime:
+
+- **`Intl` doesn't exist.** `Intl.NumberFormat`, `Intl.DateTimeFormat`,
+  `Intl.Collator` and friends throw a `ReferenceError`.
+- **Locale-aware methods ignore the locale.** `toLocaleString`,
+  `localeCompare`, `toLocaleUpperCase` and the like accept locale and options
+  arguments but fall back to plain, non-localized behavior.
+- **Unicode property escapes don't work.** A regex like `/\p{L}/u` is a
+  `SyntaxError`.
+
+TypeScript's `lib` still declares all of these, so the type checker won't warn
+you. Watch out for npm packages that lean on `Intl` (date, number and
+pluralization libraries especially): they'll bundle fine and fail when the
+script runs.
+
+:::
 
 ## Install
 
@@ -127,4 +148,5 @@ once, and a **setup function** that runs per session, reads the options from
 - [Events & Packets](/guides/events-and-packets): subscribing to the session.
 - [Movement](/api/movement): `movement_tick`, `MovementState`, jumping, and sprint and sneak control.
 - [Input](/api/input): `input_tick`, `InputState`, and overriding the player's keys.
+- [UI Widgets](/ui): HUD elements and screens of your own, built with Preact.
 - [API Reference](/api/session): the session, entities, world, inventory, and packets.

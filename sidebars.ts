@@ -37,6 +37,36 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'UI Widgets',
+      collapsed: false,
+      link: {type: 'doc', id: 'ui/index'},
+      items: [
+        'ui/setup',
+        'ui/widgets',
+        'ui/hud-placement',
+        'ui/theming',
+        'ui/lite',
+        'ui/web',
+        'ui/custom-widgets',
+        'ui/dom',
+        'ui/examples',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Baritone',
+      collapsed: false,
+      link: {type: 'doc', id: 'baritone/index'},
+      items: [
+        'baritone/commands',
+        'baritone/state',
+        'baritone/settings',
+        'baritone/how-it-works',
+        'baritone/examples',
+      ],
+    },
+    {
+      type: 'category',
       label: 'API Reference',
       collapsed: false,
       items: [

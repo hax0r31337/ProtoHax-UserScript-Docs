@@ -36,6 +36,24 @@ disconnected copy of the world.
 Everything else (your own files, and any pure-JavaScript npm packages you use)
 gets inlined. The result is self-contained apart from that one import.
 
+### Libraries the client ships
+
+The client also ships its own copies of Preact and htm, for
+[UI widgets](/ui). If you use them, keep these imports external too:
+
+| Import | Client's copy |
+| --- | --- |
+| `preact` | Preact 11 |
+| `preact/compat`, `@preact/compat` | Preact's React compatibility layer, hooks included |
+| `htm` | htm 3 |
+
+```js
+external: ["@protohax/userscript", "preact", "preact/compat", "@preact/compat", "htm"],
+```
+
+These are the only bare imports the client resolves. See
+[Preact & htm](/ui/setup) for the details.
+
 ## Setting it up by hand
 
 If you'd rather set up the build yourself, install the tools:
@@ -124,7 +142,9 @@ npx rollup -c
 ```
 
 Any other bundler works too, as long as the facade (`@protohax/userscript`) is
-external and the output is a single ES module.
+external and the output is a single ES module. Add the
+[libraries the client ships](#libraries-the-client-ships) to `external` if you
+build UI widgets.
 
 ## Types are not checked by the bundler
 

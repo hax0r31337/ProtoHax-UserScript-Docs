@@ -134,6 +134,20 @@ time, so you can't use them from a script.
 
 :::
 
+## The platform — `isDesktop`
+
+`isDesktop` is `true` when the client runs on desktop, and `false` on Android.
+It's fixed for as long as the client runs.
+
+```ts
+import { isDesktop } from "@protohax/userscript";
+
+const hint = isDesktop ? "Press Esc to close" : "Press back to close";
+```
+
+Use it where the platforms differ, such as desktop having a keyboard and no
+touch screen.
+
 ## NBT — the `nbt` namespace
 
 The host bundles a **patched** copy of `prismarine-nbt` and re-exports it as

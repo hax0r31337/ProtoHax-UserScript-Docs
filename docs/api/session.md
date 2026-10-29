@@ -28,6 +28,8 @@ else hangs off it — entities, the world, items, and the raw packet connection.
 | `entityState` | [`EntityStateTracker`](/api/entities) | Entities, the player list, and the local player. |
 | `itemState` | [`ItemStateTracker`](/api/inventory) | Inventories, containers, forms, and the item registry. |
 | `levelState` | [`LevelStateTracker`](/api/world) | The world: blocks, chunks, raytrace, collision. |
+| `baritone` | [`SessionBaritone`](/baritone) | The session's pathfinder. Built on first read; throws before the start game packet. |
+| `hasBaritone` | `boolean` | Whether `baritone` is built and running. Reading it never builds one. |
 | `sendChatMessage(message)` | `void` | Print a chat line on **your client only**. It is not sent to the server. |
 
 :::tip[Two different `sendChatMessage`s]
@@ -83,7 +85,9 @@ Some types **are** exported by name, because you need to name them directly.
 - `AbstractEntity`, `EntityPlayer`, `EntityNetworkPlayer`, `EntityCreature`,
   `EntityItem`, `EntityLocalPlayer`
 - `AbstractBlockLocationTracker`
-- `ModuleCategory`, `ModuleMode`, `ModuleTriggerMode`, `FlushAction`
+- `ModuleCategory`, `ModuleMode`, `ModuleTriggerMode`, `FlushAction`,
+  [`PacketFreezer`](/api/packets#freezing-packets--packetfreezer),
+  `FreezePacket`, `ForceFlushCondition`
 - [`SprintIntent`](/api/movement#sprint--sprintintent),
   [`SneakIntent`](/api/movement#sneak--sneakintent)
 - [`MoveKey`](/api/input#movekey), `moveFromKeys`, `keysFromMove`
@@ -92,25 +96,30 @@ Some types **are** exported by name, because you need to name them directly.
   `TargetPriority`, `ClickSchedulerConfigurable`, `ClickTechnique`, the rotation
   strategy classes, `face3DToRotationFace`, `ROTATION_CANCEL`, `ROTATION_KEEP`
 - [`registerAudio`](/api/audio)
+- [Baritone](/baritone#types): `getBaritone`, `SessionBaritone`,
+  `BaritoneStateTable`, `blockStateTableOf`, `BLOCK_STATE_TABLE_VERSION`
 
 **Type-only exports.** Import these with `import type`. They don't exist at
 runtime, so `instanceof` doesn't work on them:
 
 - `GameSession`, `GameSessionEvents`, `FullPacketEvents`, `ModuleContext`,
   `ModuleMeta`, `Option`, `Color`, `NumberOptionProps`, `NumberRange`,
+  `KeybindListener`, `ToggleKeybindListener`, `ToggleKeybindMode`,
   `Configurable`
 - `BlockState`, `Chunk`, `SubChunk`, `BlockEntry`
 - [`MovementState`](/api/movement), [`InputState`](/api/input),
   [`AudioClip`](/api/audio#audioclip)
-- `Connection`, `PacketQueueChecker`, `HeldPacket`, and `packets`, the
+- `Connection`, `PacketQueueChecker`, `HeldPacket`, `PacketFreezerSettings`, and `packets`, the
   namespace of every packet payload type
 - The [option schema](/guides/options) types (`OptionsSchema`, `SchemaNode` and
   the per-kind node interfaces, `ModeSchema`) and their handle types
   (`OptionHandles`, `SchemaNodeHandle`, `ModesHandle`, `ModeHandle`,
-  `GroupHandle`, `RotationHandle`)
+  `GroupHandle`, `RotationHandle`, `KeybindHandle`, `ToggleKeybindHandle`)
 - The combat helper types: `ModuleTargets`, `TargetConfigurableOptions`,
   `TargetInfo`, `AbstractClickScheduler`, `RotationConfigurable`, `RotationType`
   and its variants, `RotationFace`, `Face3D`
+- `BaritoneEvents`. The other Baritone types (`BaritoneGoal`,
+  `BaritoneSettings`, …) are [global](/baritone#types) and need no import.
 - Deprecated legacy types: `ModuleOptions`, `ModuleBuild`, `Session`
 
 Math and vector types, and many internal types, are also available under the

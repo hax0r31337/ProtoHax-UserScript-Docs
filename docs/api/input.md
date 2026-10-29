@@ -224,6 +224,85 @@ ctx.on("input_tick", (input) => {
 });
 ```
 
+## Moving independently of the camera
+
+`input_tick` lets a script do the walking, as a pathfinder like Baritone does,
+while the player keeps looking wherever they like. Three parts, each with its own
+job:
+
+| Part | Where it's set | What it does |
+| --- | --- | --- |
+| The input | `setAnalog` / `setKeys` | Where the client travels. It's relative to the **real** rotation, so turn the world direction by `input.rotation`. |
+| The sent rotation | [`rotationScheduler`](/api/local-player#rotationscheduler) | What the server sees you facing. The packet's rotation fix turns the input onto it, so the server sees the same move. |
+| Sprint | `requestSprint` | Whether you sprint. It has to pass [the facing check](/api/movement#the-facing-check): travel within 45° of the sent yaw. |
+
+The camera isn't part of it. You never write the real rotation, so the player
+can look around freely while the script walks.
+
+Request the aim from `input_tick` as well. The facing check runs right after
+`input_tick` and reads `rotationScheduler.current`, and the aim is committed at
+the end of this tick's `movement_tick`. So an aim requested here is the one the
+check sees and the one this tick's packet sends. An aim requested from
+`movement_tick` only reaches the facing check on the next tick.
+
+```ts
+import { SprintIntent, utils } from "@protohax/userscript";
+
+(ctx) => {
+  const player = ctx.session.entityState.localPlayer;
+  let waypoint: { x: number; z: number } | null = null;
+
+  // the heavy part stays off the game thread
+  ctx.on("tick", () => {
+    waypoint = nextWaypoint(ctx.session); // your pathfinder
+  });
+
+  ctx.on("input_tick", (input) => {
+    if (!waypoint) return;
+
+    const dx = waypoint.x - input.position.x;
+    const dz = waypoint.z - input.position.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance < 0.2) return;
+
+    // world direction -> the frame of the real (camera) yaw
+    const yaw = input.rotation.y * utils.DEG_TO_RAD;
+    const forward = (-dx * Math.sin(yaw) + dz * Math.cos(yaw)) / distance;
+    const left = (dx * Math.cos(yaw) + dz * Math.sin(yaw)) / distance;
+
+    input.setAnalog({ x: left, y: forward });
+    input.setKeys(0);
+
+    // face the travel direction for the server, so the sprint passes
+    const travelYaw = Math.atan2(-dx, dz) * utils.RAD_TO_DEG;
+    player.rotationScheduler.request(
+      new utils.Vector2(input.rotation.x, travelYaw),
+      utils.SchedulerPriority.Medium,
+      ctx,
+      100,
+    );
+    input.requestSprint(SprintIntent.Sprint);
+  });
+
+  ctx.onDisable(() => player.rotationScheduler.cancel(ctx));
+};
+```
+
+A few things to keep in mind:
+
+- **Jumping** isn't part of the input. Jump from `movement_tick` with
+  [`state.jump()`](/api/movement#jumping), for example when `state.onGround`
+  and the next waypoint is a block higher.
+- **Sneak** goes through `setSneak` like the move does. It also slows the move
+  down to 30%, and the game's edge clip keeps you from walking off a block.
+- **The player's input** is still readable through `userMove` and `userSneak`.
+  Check it to hand control back when the player takes over, as the auto-walk
+  example does.
+- **A higher-priority aim**, such as Kill Aura's, wins the `rotationScheduler`.
+  The facing check then goes by that yaw, and a sprint away from it is cancelled.
+- **The stick gives any direction**, the keys only eight. See
+  [Stick or keys?](#stick-or-keys) for how each one looks in the packet.
+
 ## Seeing the result in `movement_tick`
 
 `MovementState` reports what the game took from this tick's input, and whether

@@ -22,7 +22,7 @@ packets, use
 | `sendIncomingPacket(type, data)` | `void` | Inject a packet toward the **client** (server → client). |
 | `addPacketQueueChecker(checker)` | `void` | Register a checker that can hold matching packets in the queue. |
 | `removePacketQueueChecker(checker)` | `void` | Remove a registered checker. |
-| `flushHeld(isIncoming, filter?)` | `void` | Release some or all held packets for one direction. |
+| `flushHeld(isIncoming, filter?)` | `void` | Release some or all held packets for one direction. To hold incoming packets by kind for a delay, use a [`PacketFreezer`](#freezing-packets--packetfreezer). |
 | `actualProtocolVersion` | `number` | The protocol version agreed with the server. |
 
 ## Sending packets
@@ -168,3 +168,102 @@ The filter returns a `FlushAction`:
 | `isIncoming` | `boolean` |
 | `isInjected` | `boolean` |
 | `timestamp` | `number` |
+
+## Freezing packets — `PacketFreezer`
+
+A `PacketFreezer` freezes incoming packets by kind, the way the built-in
+Knockback Delay and Timer Balance modules do: it holds each packet of the kinds
+you pick for `delay()` milliseconds, lets them out in the order they came, and
+flushes them all when the server moves the player. It registers its own
+[queue checker](#packetqueuechecker), so you don't write one.
+
+```ts
+import { defineModule, ForceFlushCondition, FreezePacket, PacketFreezer } from "@protohax/userscript";
+
+defineModule(
+  { name: "Freeze" },
+  {
+    delay: { type: "number", name: "Delay (ms)", def: 500, min: 0, max: 5000, step: 50, displayResolution: 0 },
+    freeze: { type: "multi-enum", name: "Freeze", values: Object.values(FreezePacket), def: [FreezePacket.NetworkLatency] },
+    forceFlush: { type: "multi-enum", name: "Force Flush", values: Object.values(ForceFlushCondition) },
+  },
+  (ctx) => {
+    // every setting is read again when it's used, so they can follow options
+    const freezer = new PacketFreezer({
+      freeze: () => ctx.options.freeze.value,
+      forceFlush: () => ctx.options.forceFlush.value,
+      delay: () => ctx.options.delay.value,
+    });
+
+    let unsubscribe = () => {};
+    ctx.onEnable(() => {
+      freezer.start(ctx.session);
+      // a shorter delay lets the packets out sooner
+      unsubscribe = ctx.options.delay.subscribe(() => freezer.releaseDue());
+    });
+    ctx.onDisable(() => {
+      unsubscribe();
+      freezer.stop();
+    });
+  },
+);
+```
+
+### What it freezes — `FreezePacket`
+
+| Kind | Packets |
+| --- | --- |
+| `FreezePacket.Knockback` | `set_entity_motion` for the local player: its knockback |
+| `FreezePacket.PotionEffect` | `mob_effect` |
+| `FreezePacket.EntityState` | `set_entity_motion` for other entities, `move_entity`, `move_entity_delta`, `move_player`, and `update_attributes` changing the local player's movement speed (on land, under water or in lava) or knockback resistance |
+| `FreezePacket.BlockUpdate` | `update_block`, `update_block_synced`, `block_event` |
+| `FreezePacket.NetworkLatency` | `network_stack_latency`, the server's transactions |
+
+Freezing transactions holds back the client's answers to them, which is what
+anticheats time the client against. Freeze the kinds whose order against the
+transactions you need to keep, too.
+
+### When it flushes
+
+Everything held is released at once, and `onForceFlush` is called, when:
+
+- the server moves the local player (`move_player`), respawns it, or corrects
+  its movement (`correct_player_move_prediction`),
+- the dimension changes,
+- a condition picked in `forceFlush()` happens: `ForceFlushCondition.ContainerOpen`
+  when a container opens.
+
+### Settings — `PacketFreezerSettings`
+
+| Setting | Description |
+| --- | --- |
+| `freeze()` | The kinds frozen, a set of `FreezePacket`. |
+| `forceFlush()` | The extra conditions that flush everything, a set of `ForceFlushCondition`. |
+| `delay()` | How long each packet is held, in ms. `Infinity` holds until `flush()`. `0` or less freezes nothing new, but a packet that comes behind ones still held is held too, to keep the order. |
+| `filter?(name, body)` | Decides a packet before the kinds: `true` holds it whatever the kinds and the delay, `false` lets it through, `undefined` leaves it to them. Knockback Delay holds the player's knockback this way. |
+| `onForceFlush?()` | Called after a force flush. |
+
+Each one is called again whenever it's needed, so return the live value: an
+option's, or your own state's.
+
+### `PacketFreezer`
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `new PacketFreezer(settings)` | | A freezer, not started yet. |
+| `start(session)` | `void` | Start freezing the incoming packets of `session`. |
+| `stop()` | `void` | Release everything held and stop. |
+| `releaseDue()` | `void` | Release the packets that have waited `delay()` ms, and schedule the next release. |
+| `flush()` | `void` | Release everything held now. |
+| `size` | `number` | How many packets are held. |
+
+- **Only its packets.** Releases go through
+  [`flushHeld`](#flushheldisincoming-filter) with a filter that keeps the
+  packets other checkers hold. A packet someone else already released is
+  skipped.
+- **The delay can change.** `delay()` is read again at every release. A longer
+  delay is picked up without any work. When it gets shorter, call
+  `releaseDue()`: the release already scheduled isn't moved earlier on its own.
+- **Holding until you say so.** Return `Infinity` from `delay()` to hold until
+  `flush()`. Switch back to a finite delay and call `releaseDue()` to let the
+  freezer time the packets again.

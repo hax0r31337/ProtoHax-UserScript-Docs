@@ -57,12 +57,15 @@ Every node has a `type` field that picks its kind:
 | `"enum"` | `Option<union of values>` | `values`, `def?` (default `values[0]`) |
 | `"multi-enum"` | `Option<Set<union of values>>` | `values`, `def?` (default empty), `child?` |
 | `"color"` | `Option<Color>` | `def` as `[r, g, b, a]`, each channel 0–255; `child?` |
+| `"keybind"` | `KeybindHandle` | A key the player picks. `def?` (default `0`, unbound), `listener?`, `child?`. See [Keybinds](#keybinds). |
+| `"toggle-keybind"` | `ToggleKeybindHandle` | A key driving an on/off state. `def?`, `state?` (default `false`), `mode?` (default `"toggle"`), `listener?`, `child?`. See [Toggle keybinds](#toggle-keybinds). |
 | `"comment"` | — | A text line, display only. The text is `name` (or the key). `icon?`: `"info"`, `"warning"`, `"error"`, `"suggestion"`, `"advanced"`. |
 | `"group"` | [`GroupHandle`](#drawers--group) | `options`: a nested schema shown as a drawer. |
 | `"modes"` | [`ModesHandle`](#modes) | `modes`, `def?`: choices with their own options and behavior. |
 | `"click-scheduler"` | `ClickSchedulerConfigurable` | The host's CPS clicker. See [Combat Helpers](/api/combat-helpers#clicker). |
 | `"rotation"` | `RotationHandle` | The host's rotation strategy selector. See [Combat Helpers](/api/combat-helpers#rotation). |
 | `"target"` | `TargetConfigurable` | The host's target-selection drawer. See [Combat Helpers](/api/combat-helpers#target-scanning). |
+| `"hud-placement"` | `HudPlacementConfigurable` | A HUD widget's position and scale, hidden from the menu and saved with the config. `def?`. See [HUD Placement](/ui/hud-placement#saving-the-placement--hud-placement). |
 | `"raw"` | the object itself | Escape hatch: embed a pre-built host `Option` or `Configurable`. See [Combat Helpers](/api/combat-helpers#raw-nodes--the-escape-hatch). |
 
 For `number` and `number-range`, `displayResolution` is how many decimal places
@@ -115,7 +118,7 @@ needs to last one session, use
 ## Nested options — `child`
 
 Every value-bearing node (`boolean`, `number`, `number-range`, `string`,
-`string-list`, `multi-enum`, `color`) accepts a `child` schema. The nested
+`string-list`, `multi-enum`, `color`, `keybind`, `toggle-keybind`) accepts a `child` schema. The nested
 options appear under the parent in the menu, and the parent handle exposes them
 as `.child`:
 
@@ -233,6 +236,144 @@ show up in code.
 | `subscribe(listener, notifyFirst?)` | `() => void` | Watch for selection changes. Returns an unsubscribe function. |
 | `modes` | record of [`Configurable`](#configurables) | Each mode's configurable, keyed like the schema, with its option handles. `modus.modes.Reversal.ticks.value` works from anywhere. |
 | `option` | `Option<unknown>` | The raw host option behind the selector. |
+
+## Keybinds
+
+A `keybind` option lets the player pick a key, the same way they bind a key to
+a module. Its `listener` is called each time the bind is pressed:
+
+```ts
+defineModule(
+  { name: "Ping" },
+  {
+    bind: { type: "keybind", name: "Ping Key", listener: () => console.log("ping!") },
+  },
+  () => {},
+);
+```
+
+The bind is pressed in two ways:
+
+- **By its key**, when the key goes down outside the menu. Holding the key
+  down doesn't press it again.
+- **By its shortcut**, on Android. Next to the option in the menu there is a
+  bookmark button, which puts a shortcut for it on the HUD, the same as a
+  module's shortcut. Tapping the shortcut presses the bind, so it works
+  without a keyboard.
+
+The handle is a `KeybindHandle`, an `Option<number>` with two more members:
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `listener` | `(() => void) \| undefined` | Called on each press. Assign it to set or replace the listener from your code. |
+| `press()` | `void` | Press the bind from your code, as its key or shortcut does. |
+
+The listener belongs to the option, not to a session. It's called whether or
+not the module is enabled, and there's only one per option. To react only while
+the module is on, or to reach things from your setup like `ctx.session` or a
+widget, set it in `onEnable` and clear it in `onDisable`:
+
+```ts
+(ctx) => {
+  ctx.onEnable(() => {
+    ctx.options.bind.listener = () => ctx.session.entityState.localPlayer.sendChatMessage("ping!");
+  });
+  ctx.onDisable(() => {
+    ctx.options.bind.listener = undefined;
+  });
+}
+```
+
+The [`key` event](/guides/events-and-packets#key--keyboard-input) still
+reports every key if you need more than presses, such as releases. Compare the
+`keyId` it gives with the option's `value`. Unlike the listener, it never sees
+the Android shortcut.
+
+The value is a key id, a `number`: Flutter's
+[`LogicalKeyboardKey.keyId`](https://api.flutter.dev/flutter/services/LogicalKeyboardKey-class.html),
+the same id the `key` event reports. `0` means unbound. Compare ids, there's
+no need to know what they are. If you want a default key, these are the
+common ones:
+
+| Key | Id |
+| --- | --- |
+| Letters `a`–`z` | Their lowercase character code: `a` is `0x61`, `z` is `0x7a`. |
+| Digits `0`–`9` | Their character code: `0` is `0x30`, `9` is `0x39`. |
+| Space | `0x20` |
+| Enter, Tab, Backspace, Escape | `0x10000000d`, `0x100000009`, `0x100000008`, `0x10000001b` |
+| Arrow down, left, right, up | `0x100000301`, `0x100000302`, `0x100000303`, `0x100000304` |
+| F1–F12 | `0x100000801` to `0x10000080c` |
+| Shift, Control, Alt, Meta | `0x2000001f2`, `0x2000001f0`, `0x2000001f4`, `0x2000001f6` |
+
+Modifier keys are reported without a side: left and right Shift are both
+Shift.
+
+```ts
+bind: { type: "keybind", def: 0x67 }, // G
+```
+
+:::note[Picking a key needs a keyboard]
+
+The key picker is only shown on desktop, or on Android with keyboard input
+turned on in the menu settings. Without it, Android still shows the option
+with its shortcut button. The key the option holds is kept and saved with the
+config either way.
+
+:::
+
+### Toggle keybinds
+
+A `toggle-keybind` option is a keybind with an on/off `state`. The player picks
+the key, and also picks its mode from a button next to it in the menu:
+
+- `"toggle"`: each press flips the state, like a module in Toggle mode. The
+  state is saved with the config, and the menu shows a switch for it.
+- `"while-held"`: the state is on while the key, or the shortcut, is held down,
+  and turns off when it's released. Switching to this mode turns the state off,
+  and the state isn't saved.
+
+The `listener` is called with the new state each time it changes, for whatever
+reason: a press, a release, the switch, a config load or reset, or your own
+code setting `state`.
+
+```ts
+defineModule(
+  { name: "Zoom" },
+  {
+    zoom: {
+      type: "toggle-keybind",
+      name: "Zoom",
+      def: 0x63, // C
+      mode: "while-held",
+      listener: (on) => console.log(on ? "zoom in" : "zoom out"),
+    },
+  },
+  (ctx) => {
+    ctx.on("tick", () => {
+      if (!ctx.options.zoom.state) return;
+      // zoomed in
+    });
+  },
+);
+```
+
+`state?` is the initial state in `"toggle"` mode, and `mode?` is only the
+default: the player can change it.
+
+The handle is a `ToggleKeybindHandle`, an `Option<number>` holding the key id,
+with:
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `state` | `boolean` | The current state. Set it to change it; the listener is called. |
+| `mode` | `"toggle" \| "while-held"` | The mode the player picked. Set it to change it. |
+| `listener` | `((state: boolean) => void) \| undefined` | Called with each new state. |
+| `press()` | `void` | Press the bind: flips the state, or turns it on in `"while-held"` mode. |
+| `release()` | `void` | Release the bind: turns the state off in `"while-held"` mode. |
+
+The `subscribe` of the handle also fires on a change of `state` or `mode`, as
+well as of the key. Like `keybind`'s, the listener belongs to the option and
+runs whether or not the module is enabled.
 
 ## Reading & observing — `Option<T>`
 

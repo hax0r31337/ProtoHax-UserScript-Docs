@@ -193,6 +193,30 @@ counts too.
 It already reflects a request from this tick's `input_tick`, but not one made
 during `movement_tick`.
 
+### The facing check
+
+Vanilla only sprints while you move roughly forward. With an aim override, the
+direction you travel and the yaw the server sees can disagree, and a sprint
+the server sees going sideways or backwards is an obvious tell.
+
+So once every `input_tick` listener has run, ProtoHax compares the direction
+of this tick's input (`input.move` turned by your real yaw) against the yaw
+being sent. If they are more than **45°** apart, it requests
+`SprintIntent.NotSprint`. The yaw being sent is `rotationScheduler.current`, or
+your real yaw when nothing overrides it.
+
+- The check runs **even with the Sprint module off**, since a sprint the player
+  started looks just as wrong.
+- With the Sprint module on, it only runs when **Required Input** is `Forward`.
+  The other input modes ask for sprinting in any direction, so they skip it.
+- It doesn't run on a tick with no move input.
+
+`NotSprint` beats `Sprint`, so your own `requestSprint(SprintIntent.Sprint)`
+loses to it. To sprint in a direction the camera isn't facing, send a yaw along
+the travel direction through
+[`rotationScheduler`](/api/local-player#rotationscheduler). See
+[Moving independently of the camera](/api/input#moving-independently-of-the-camera).
+
 ## Sneak — `SneakIntent`
 
 Sneaking works like sprinting. You request an **intent** for the sneak key, and

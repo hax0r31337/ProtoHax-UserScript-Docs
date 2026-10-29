@@ -32,7 +32,7 @@ The full `GameSessionEvents` map:
 | --- | --- | --- |
 | `open` | `(address: string)` | The session connected. |
 | `close` | `()` | The session closed. |
-| `local_player_initialized` | `()` | The local player finished initializing. |
+| `local_player_initialized` | `()` | The client finished loading into the world and spawned. Fires once after each `start_game`. |
 | `teleport` | `()` | The local player was teleported. |
 | `dimension_change` | `()` | The dimension changed. |
 | `tick` | `()` | Each game tick, while its auth-input packet is being handled. |
@@ -54,8 +54,42 @@ The full `GameSessionEvents` map:
 | `target_killed` | `(entity: EntityNetworkPlayer)` | A combat target was killed. |
 | `player_list_add` | `(entry: PlayerListEntry)` | A player joined the tab list. |
 | `player_list_remove` | `(entry: PlayerListEntry)` | A player left the tab list. |
+| `key` | `(keyId: number, type: KeyEventType)` | A key was pressed, held or released. See [below](#key--keyboard-input). |
 
 `HotbarSlotEvent` is `{ from: number; to: number; isIncoming: boolean }`.
+
+### `key` — keyboard input
+
+`key` reports the keys the client UI sees:
+
+- `keyId` is Flutter's `LogicalKeyboardKey.keyId`, the same number a
+  [`keybind` option](/guides/options#keybinds) holds.
+- `type` is `"down"` when the key is pressed, `"repeat"` while it's held and
+  the key repeats, and `"up"` when it's released.
+
+```ts
+ctx.on("key", (keyId, type) => {
+  if (type === "up" && keyId === ctx.options.bind.value) {
+    // the bound key was released
+  }
+});
+```
+
+To just react to a bound key being pressed, give the keybind option a
+[`listener`](/guides/options#keybinds) instead. It's also called by the
+option's shortcut on Android, which `key` never sees.
+
+A few things to know:
+
+- **Presses aren't sent while the menu is open**, so typing in the menu
+  doesn't trigger your binds. Releases still are, so you never see a key stuck
+  down.
+- **It fires on every open session.** Unlike most events, it isn't tied to
+  one server's traffic.
+- **Keys come without a side.** Left and right Shift are both Shift, and the
+  same goes for Control, Alt and Meta.
+- **Keys need a keyboard.** That's a desktop, or an Android device with a
+  keyboard attached.
 
 ### `tick` vs. `post_tick`
 
