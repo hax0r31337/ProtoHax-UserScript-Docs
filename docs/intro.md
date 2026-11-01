@@ -146,7 +146,7 @@ once, and a **setup function** that runs per session, reads the options from
 - [Modules](/guides/modules): metadata, the Script category, and toggling.
 - [Options](/guides/options): sliders, toggles, enums, colors.
 - [Events & Packets](/guides/events-and-packets): subscribing to the session.
-- [Movement](/api/movement): `movement_tick`, `MovementState`, jumping, and sprint and sneak control.
-- [Input](/api/input): `input_tick`, `InputState`, and overriding the player's keys.
+- [Movement](/api/movement): `movement_tick`, `MovementState`, motion and jumping.
+- [Input](/api/input): `input_tick`, `InputState`, overriding the player's keys, sprint, and the tick's aim.
 - [UI Widgets](/ui): HUD elements and screens of your own, built with Preact.
 - [API Reference](/api/session): the session, entities, world, inventory, and packets.

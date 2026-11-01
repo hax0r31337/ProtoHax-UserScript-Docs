@@ -137,8 +137,10 @@ only apply it. Full pattern:
 
 `input_tick` fires just before `movement_tick`, at the moment the game takes
 the player's input. It gives you an [`InputState`](/api/input) with the move
-keys, the analog stick and the sneak key. What you write there is that tick's
-input, as if the player had pressed it.
+keys, the analog stick, and the sneak and sprint keys. What you write there is
+that tick's input, as if the player had pressed it. It's also where the tick's
+aim is decided: a `rotationScheduler` request standing when every listener is
+done is the rotation the game plays the tick on.
 
 ```ts
 ctx.on("input_tick", (input) => {
@@ -150,11 +152,11 @@ It runs on the game thread too, so the same performance rules apply.
 
 ### Order within a tick
 
-1. `input_tick`: the game takes the input. Sprint and sneak changes made here
-   apply on this tick.
+1. `input_tick`: the game takes the input. Input and aim written here apply on
+   this tick. Then the aim is committed.
 2. The game's sprint and sneak systems run, then its own jump logic.
-3. `movement_tick`: position, motion and jump writes apply on this tick. Sprint
-   and sneak intents requested here apply on the next tick.
+3. `movement_tick`: position, motion and jump writes apply on this tick. Input
+   and rotation are already taken; an aim requested here lands next tick.
 4. The client travels.
 5. `tick`: the resulting auth-input packet is being handled.
 6. `post_tick`: that packet has been handled.

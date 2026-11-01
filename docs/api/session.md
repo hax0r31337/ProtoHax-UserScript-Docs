@@ -88,9 +88,8 @@ Some types **are** exported by name, because you need to name them directly.
 - `ModuleCategory`, `ModuleMode`, `ModuleTriggerMode`, `FlushAction`,
   [`PacketFreezer`](/api/packets#freezing-packets--packetfreezer),
   `FreezePacket`, `ForceFlushCondition`
-- [`SprintIntent`](/api/movement#sprint--sprintintent),
-  [`SneakIntent`](/api/movement#sneak--sneakintent)
-- [`MoveKey`](/api/input#movekey), `moveFromKeys`, `keysFromMove`
+- [`MoveKey`](/api/input#movekey), `moveFromKeys`, `keysFromMove`,
+  [`SprintIntent`](/api/input#sprint--sprintintent)
 - `defineModule`, `mode`, `moduleManager`, `utils`, `nbt`
 - The [combat helpers](/api/combat-helpers): `targets`, `TargetConfigurable`,
   `TargetPriority`, `ClickSchedulerConfigurable`, `ClickTechnique`, the rotation
@@ -108,6 +107,7 @@ runtime, so `instanceof` doesn't work on them:
   `Configurable`
 - `BlockState`, `Chunk`, `SubChunk`, `BlockEntry`
 - [`MovementState`](/api/movement), [`InputState`](/api/input),
+  [`InputTickSnapshot`](/api/input#what-went-in--lastinputtick),
   [`AudioClip`](/api/audio#audioclip)
 - `Connection`, `PacketQueueChecker`, `HeldPacket`, `PacketFreezerSettings`, and `packets`, the
   namespace of every packet payload type

@@ -6,17 +6,16 @@ title: How It Drives the Player
 # How It Drives the Player
 
 Baritone doesn't press anything the player could see. It hooks the same tick
-events your modules use and writes into them: the input in
-[`input_tick`](/api/input), the jump and the rotation in
-[`movement_tick`](/api/movement). This page is what it does there, and what
-that means for modules running next to it.
+events your modules use and writes into them: the input and the rotation in
+[`input_tick`](/api/input), the jump in [`movement_tick`](/api/movement). This
+page is what it does there, and what that means for modules running next to it.
 
 ## Where it sits in a tick
 
 | Order | Event | What Baritone does |
 | --- | --- | --- |
-| 1 | `input_tick` | Takes in the player: position, rotation, ground, effects, hunger, game mode, and the inventory when it changed. Then Baritone **ticks**: it decides this tick's moves, breaks and places. Then its keys, sneak and sprint go in as the tick's input. |
-| 2 | `movement_tick` | Blocks the game's own jump while Baritone is moving the player, and applies Baritone's jump instead. Requests the rotation Baritone looks with. |
+| 1 | `input_tick` | Takes in the player: position, rotation, ground, effects, hunger, game mode, and the inventory when it changed. Then Baritone **ticks**: it decides this tick's moves, breaks and places. It requests the rotation it looks with (the game plays the tick on it, the camera keeps the player's), then its keys, sneak and sprint go in as the tick's input. |
+| 2 | `movement_tick` | Blocks the game's own jump while Baritone is moving the player, and applies Baritone's jump instead. |
 | 3 | `player_auth_input` | Notes the player's velocity for the next tick. |
 | 4 | `post_tick` | Tells Baritone the rotation the packet carried. |
 
@@ -48,10 +47,10 @@ faces elsewhere, they go in as a stick pointing the way Baritone wants to go.
 Either way, the game moves the player where Baritone wants, and the server sees
 Baritone walking straight along its own rotation.
 
-Sprinting works the same way. Baritone holds the sprint key, and when the keys
-had to be turned, ProtoHax also requests a
-[`SprintIntent.Sprint`](/api/movement#sprint--sprintintent), so the client and the
-server agree on the sprint.
+Sprinting needs nothing extra. Baritone holds the
+[sprint key](/api/input#the-sprint-key), and since the game plays the tick on
+Baritone's rotation with the move turned onto it, the client and the server
+decide the sprint from the same input.
 
 | `getMovementInput()` | What goes in |
 | --- | --- |

@@ -117,6 +117,36 @@ exists. You can read the configured values as `ctx.options.click.cps` (a
 A running scheduler reads its settings once, when it's created. To apply changes
 mid-session, create a new one.
 
+### Holding a click
+
+A click can come due when there's nothing worth hitting, for example while the
+attack cooldown is still running. Return `false` from the callback to **hold**
+it. The scheduler stops its timer and waits for you to release the click with
+`trigger()`, instead of throwing it away and drawing the next delay.
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `get held` | `boolean` | Whether a click is held, i.e. `trigger()` would fire one. |
+| `trigger(delayMs = 0)` | `boolean` | Release the held click after `delayMs` (synchronously when 0), then resume the cadence from it. Returns `false`, and does nothing, unless a click is held. If the callback declines it again, it stays held. |
+| `get meanIntervalMs` | `number` | Mean delay between clicks at the middle of the CPS range. |
+| `dispose()` | `void` | Stop clicking and release the timer. |
+
+A held click never fires sooner than the schedule did, so the click intervals
+stay in distribution. Holding also drops any short-gap state (a `Gaussian
+Distribution` burst, `Double Tap` quick taps) that would have followed it.
+
+```ts
+clicker = ctx.options.click.getClickScheduler(() => {
+  if (!canHitNow()) return false; // hold it
+  attack();
+});
+
+// later, once a hit is possible again
+ctx.on("tick", () => {
+  if (clicker?.held && canHitNow()) clicker.trigger();
+});
+```
+
 ## Rotation
 
 The `rotation` node adds the host's rotation strategy selector: `None`,

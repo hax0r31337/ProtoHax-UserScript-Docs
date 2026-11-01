@@ -35,26 +35,34 @@ local player. They live on the `MovementState` passed to the
 | `serverAddress` | `string` | Address of the connected server. |
 | `gameVersion` | `string` | Client game version string. |
 | `isInitialized` | `boolean` | Whether the client has spawned in this world. Reset by each `start_game`, then set just before [`local_player_initialized`](/guides/events-and-packets#game-events) fires. |
+| `isGeyser` | `boolean` | Whether the server is a [Geyser](https://geysermc.org) proxy in front of a Java server. Reset on login. It turns `true` when the server announces Geyser's integrated resource pack, or sends a `geyseropt:` message, so on some servers it only turns `true` later (for example on the first attack cooldown update). |
 | `tick` | `bigint` | The player's current tick counter. |
 
 ## Movement state
 
 | Member | Type | Description |
 | --- | --- | --- |
-| `moveVector` | `Vector2` | Raw strafe input vector from the last auth-input packet. |
-| `isMoving` | `boolean` | Whether movement keys are pressed. `false` when only coasting. |
+| `get lastInputTick` | `InputTickSnapshot \| null` | The last `input_tick`'s input as it went in, every listener and the Sprint module included. `null` before the first. From the end of `input_tick` on, it's this tick's. See [`lastInputTick`](/api/input#what-went-in--lastinputtick). |
+| `get isMoving` | `boolean` | Whether `lastInputTick.move` asks to move. `false` when only coasting. |
 | `sneaking` / `sprinting` / `swimming` / `gliding` / `crawling` | `boolean` | Pose and movement flags. |
 | `verticalCollision` | `boolean` | Collided vertically last tick. |
 | `horizontalCollision` | `boolean` | Collided horizontally last tick. |
 | `prevServerSideYaw` | `number` | Server-side yaw on the previous tick. |
 | `get predictedMotion` | `Vector3` | Predicted motion **ignoring collision**, i.e. what motion would be with no blocks in the way. |
-| `get serverSideRotation` | `Vector2` | The rotation being sent to the server: the committed override, or your real rotation if nothing overrides it. During `movement_tick` this is still the previous tick's commit, because this tick's isn't decided until every listener has run. |
+| `get serverSideRotation` | `Vector2` | The rotation sent to the server and the one the game plays the tick on: the committed override, or your real rotation if nothing overrides it. It's committed at the end of `input_tick`, so during `input_tick` it's still the previous tick's. From `movement_tick` on it's this tick's. |
+| `get travelYaw` | `number` | The world direction the move input heads, in degrees: facing plus the input's angle. Vanilla's sprint test compares it against the sent yaw. Taken from the live `input_tick` or `movement_tick` state if there is one, else from `lastInputTick`. |
 
-`position`, `motion`, `rotation` and the on-ground state are refreshed from game
-memory at the start of each [`movement_tick`](/api/movement), before any module
-runs. They don't come from the auth-input packet. They are a snapshot, though:
-writing through `MovementState` doesn't update them, so read live values from
-the state object instead.
+`moveVector` is gone. Use `lastInputTick?.move` instead (see the
+[migration table](/api/movement#migrating-from-the-movement-tick-intents)).
+
+`position`, `rotation` and the on-ground state are refreshed from game memory at
+the start of each tick ([`input_tick`](/api/input)), before any module decides on
+it. `motion` is refreshed then too, and again at
+[`movement_tick`](/api/movement) once this tick's jump is in it. None of them
+come from the auth-input packet. They are a snapshot, though: writing through
+`MovementState` doesn't update them, so read live values from the state object
+instead. `rotation` is the camera's; the rotation the tick is played on is
+`serverSideRotation`.
 
 ## Auth-input data
 
@@ -103,9 +111,10 @@ reuse the player's own `serverSideRotation`.
 | `swingItem(source?)` | Swing the arm once this tick. You can tag it with a source string. |
 | `sendJumpFlagNextPacket()` | Make the next auth-input packet read as a jump, the way the client sends one. `MovementState.jump()` already does this for you. See [Jumping](#jumping). |
 | `releaseJumpNextPacket()` | Make the next auth-input packet show the jump key released for one tick. See [Jumping](#jumping). |
-| `click(rotation)` | Queue an interact/attack click at the given rotation. |
+| `click(rotation)` | Queue an interact/attack click rotation (`interact_rotation`) for the next auth-input packet. |
+| `get sentInteractRotation` | The click rotation (`interact_rotation`) the server last received. |
 | `missClick(rotation)` | Queue a deliberate miss-click. |
-| `interactEntity(entity, swing, rotation, action, positionOverride?)` | Attack or interact with an entity. `action` is `"attack"` or `"interact"`. |
+| `interactEntity(entity, swing, rotation, action, positionOverride?)` | Attack or interact with an entity. `action` is `"attack"` or `"interact"`. `rotation` only places the click position; it isn't queued as the click rotation. See below. |
 | `interactBlock(position, face, swingSource?, consumeItem?, clickOffset?, hand?)` | Use or place against a block face. `clickOffset` is the point you clicked on the face, relative to the block; it's random if you leave it out. `hand` is the hand reported to the server: `"main_hand"` (the default) or `"off_hand"`. |
 | `sendChatMessage(message)` | Send a chat message **to the server** as the player. |
 
@@ -124,6 +133,34 @@ ctx.on("tick", () => {
     }
   }
 });
+```
+
+:::caution[Click a packet ahead of the attack]
+
+`interactEntity` no longer calls `click(rotation)` for you. An entity
+transaction is checked against the click rotation the server **already has**
+(`sentInteractRotation`), since the one `click` queues only rides the *next*
+auth-input packet, after the transaction. Some anticheats (Boar's touch reach,
+for example) check it. So `click` the rotation you'll attack with a packet
+before calling `interactEntity`.
+
+:::
+
+## Attack cooldown (Java servers)
+
+Behind a Java server (see `isGeyser`), attacks follow Java's 1.9+ cooldown:
+an attack before the held item has recharged lands weaker. The local player
+tracks Java's attack timer for you.
+
+| Member | Type | Description |
+| --- | --- | --- |
+| `get ticksSinceAttack` | `number` | Ticks since the last attack or main-hand item type change. Java's `attackStrengthTicker`, which both reset. |
+| `get javaAttackSpeed` | `number` | The held item's Java attack speed: its base speed, with Haste adding and Mining Fatigue taking 10% per level. |
+| `get javaAttackCooldownTicks` | `number` | How many `ticksSinceAttack` an attack needs to land at full strength. |
+
+```ts
+const player = ctx.session.entityState.localPlayer;
+const ready = !player.isGeyser || player.ticksSinceAttack >= player.javaAttackCooldownTicks;
 ```
 
 ## Jumping
@@ -232,15 +269,12 @@ if (bc.canInjectBreak()) {
 Schedules server-side rotation overrides (aim). Type: `Scheduler<Vector2>`.
 
 The winning override is **committed once, at the end of each
-[`movement_tick`](/api/movement)**. The auth-input packet is then built from that
-commit, not from a fresh read. Because entries expire on wall-clock timers, this
-commit is what ties one rotation to one tick. An aim you request in a
-`movement_tick` ends up on that same tick's packet.
-
-A [`SprintIntent`](/api/movement#sprint--sprintintent) works differently. The
-game's sprint systems run before `movement_tick`, so a sprint request from there
-applies on the next tick. Request it from
-[`input_tick`](/api/input) to have it land on the same packet.
+[`input_tick`](/api/input#rotation--the-ticks-aim)**, after every listener has
+run. The game then plays the whole tick on it (sprint, the sprint-jump boost
+and travel, as a server simulating the packet does), and the auth-input packet
+carries it. The camera keeps the real rotation. Because entries expire on
+wall-clock timers, this commit is what ties one rotation to one tick. An aim
+you request in an `input_tick` ends up on that same tick.
 
 | Member | Type | Description |
 | --- | --- | --- |
@@ -262,8 +296,8 @@ import { utils } from "@protohax/userscript";
 
 const player = ctx.session.entityState.localPlayer;
 
-// request from `movement_tick` so the aim lands on this tick's packet
-ctx.on("movement_tick", () => {
+// request from `input_tick` so the aim lands on this tick
+ctx.on("input_tick", () => {
   player.rotationScheduler.request(
     new utils.Vector2(0, 90), // (pitch, yaw)
     utils.SchedulerPriority.High,
@@ -280,11 +314,12 @@ built-in modules pass, and it goes away with the session. Only use a separate
 token (`const OTHER = {}`) when one module needs two independent requests at the
 same time. Declare it *inside* setup so it isn't shared across sessions.
 
-:::caution[Request the aim from `movement_tick`, not `tick`]
+:::caution[Request the aim from `input_tick`]
 
-The commit happens before the auth-input packet is built. `tick` fires *while*
-that packet is being handled, which is after the commit. So a rotation requested
-from a `tick` handler only shows up on the **next** tick's packet. This is why
-the built-in combat modules aim from `movement_tick`.
+The commit happens at the end of `input_tick`. `movement_tick` and `tick` both
+fire after it, so a rotation requested from either only lands on the **next**
+tick. This is why the built-in combat modules aim from `input_tick`. A request
+with a long enough expiry still holds over the ticks that follow, so deciding
+in `tick` works too, just a tick late.
 
 :::
