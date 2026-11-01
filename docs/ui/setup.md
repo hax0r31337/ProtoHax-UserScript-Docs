@@ -31,6 +31,15 @@ const html = htm.bind(h);
 You don't have to use Preact at all. The shim takes plain DOM calls too, see
 [The DOM Shim](/ui/dom).
 
+:::tip
+
+Using the [template](/guides/project-setup)? Preact, the externals and JSX are
+all set up already, with a JSX HUD widget in `src/coordinates.tsx`. Install
+`htm@^3` if you want htm too. Read on for what the setup does, or to set it up
+by hand.
+
+:::
+
 ## Installing the types
 
 Install the packages as dev dependencies, for the types only:
@@ -45,8 +54,8 @@ match what runs.
 ## Keeping them external
 
 Like `@protohax/userscript`, these imports have to **stay in the built file**,
-so the client can resolve them. Add them to your bundler's externals. With the
-template's rollup config:
+so the client can resolve them. Add them to your bundler's externals. With
+rollup:
 
 ```js
 export default {
@@ -67,7 +76,7 @@ If your bundle inlines its own copy of Preact while something else uses the
 client's, there are two Preacts. Hooks then fail in confusing ways, because a
 component rendered by one copy calls hooks registered with the other. Keep all
 of `preact`, `preact/compat` and `@preact/compat` external, and don't import
-from `preact/hooks`.
+from `preact/hooks`. The template's build fails if you do.
 
 :::
 
@@ -100,10 +109,14 @@ render(html`<${Counter} />`, widget.root);
 }
 ```
 
-And in the swc plugin options of `rollup.config.mjs`:
+And in `rollup.config.mjs`, run swc twice: once for `.tsx` files with the TSX
+parser and the classic transform, and once for everything else with the plain
+TypeScript parser. The TSX parser reads `<T>value` as an element, so turning
+it on for `.ts` files too would break angle-bracket casts there.
 
 ```js
 swc({
+  include: /\.tsx$/,
   swc: {
     jsc: {
       target: "esnext",
@@ -113,6 +126,10 @@ swc({
       },
     },
   },
+}),
+swc({
+  exclude: /\.tsx$/,
+  swc: { jsc: { target: "esnext", parser: { syntax: "typescript" } } },
 }),
 ```
 

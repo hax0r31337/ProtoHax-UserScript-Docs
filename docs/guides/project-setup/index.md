@@ -30,8 +30,12 @@ npm run check      # type-check without building
 What you get:
 
 - A working example module in `src/index.ts` that cancels chat packets.
+- A [UI widget](/ui) example in `src/coordinates.tsx`: a coordinates HUD
+  written with Preact and JSX.
 - The build and deploy scripts described in this section.
-- Bundling with rollup, configured in `rollup.config.mjs`.
+- Bundling with rollup, configured in `rollup.config.mjs`, with the
+  [client's Preact and htm](/ui/setup) kept external and `.tsx` files
+  compiled with the classic JSX runtime.
 - `script.config.mjs` for the settings you'll actually change: output name,
   sourcemap, minify, and the [metadata banner](/guides/project-setup/banner).
 
